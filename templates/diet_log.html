@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+{% block title %}Log Diet - SportEquity{% endblock %}
+{% block content %}
+<div class="container-fluid px-4 py-4">
+  <div class="row justify-content-center stagger-fade">
+    <div class="col-md-9 col-lg-7">
+      
+      <div class="text-center mb-4">
+        <div class="d-inline-flex justify-content-center align-items-center bg-warning text-white mb-3 shadow" style="width:64px;height:64px;border-radius:50%;">
+            <i class="bi bi-cup-hot-fill fs-3 text-dark"></i>
+        </div>
+        <h2 class="fw-bold" style="font-family:var(--font-display);">Nutrition Logger</h2>
+        <p class="text-muted">Record your meals to receive AI-powered dietary insights</p>
+      </div>
+
+      <div class="card card-interactive shadow-sm border-0" style="border-radius:var(--radius-lg);">
+        <div class="card-body p-4 p-md-5">
+          <form method="POST">
+            <div class="row mb-4">
+              <div class="col-md-6 mb-3 mb-md-0">
+                <label class="form-label fw-bold text-muted" style="font-size:0.85rem;text-transform:uppercase;">Date <span class="text-danger">*</span></label>
+                <input type="date" class="form-control form-control-lg bg-light" name="date" value="{{ now }}" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-bold text-muted" style="font-size:0.85rem;text-transform:uppercase;">Meal Type <span class="text-danger">*</span></label>
+                <select class="form-select form-select-lg bg-light" name="meal" required>
+                  <option value="">Select meal</option>
+                  <option>Breakfast</option>
+                  <option>Lunch</option>
+                  <option>Dinner</option>
+                  <option>Pre-workout Snack</option>
+                  <option>Post-workout Meal</option>
+                  <option>General Snack</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="mb-4 p-3 bg-light" style="border-radius:var(--radius-md); border:1px dashed #D97706;">
+              <label class="form-label fw-bold text-dark" style="font-size:0.85rem;text-transform:uppercase;"><i class="bi bi-robot text-warning"></i> AI Food Macros Predictor</label>
+              <div class="input-group mb-2 shadow-sm" style="border-radius:var(--radius-sm); overflow:hidden;">
+                <input type="text" class="form-control border-0" id="foodQuery" placeholder="E.g., 1 bowl of oatmeal, 2 boiled eggs">
+                <button type="button" class="btn btn-warning fw-bold text-dark px-4" id="btnPredict"><i class="bi bi-stars"></i> Predict</button>
+              </div>
+              <small class="text-muted" id="predictStatus">Type food and amount to auto-fill calories, protein, carbs, and fats below.</small>
+            </div>
+
+            <div class="row mb-4">
+              <div class="col-md-6 mb-3 mb-md-0">
+                <label class="form-label fw-bold text-muted" style="font-size:0.85rem;text-transform:uppercase;">Calories (kcal)</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-white text-warning"><i class="bi bi-fire"></i></span>
+                  <input type="number" class="form-control" name="calories" id="inputCalories" min="0" max="10000" placeholder="e.g. 600">
+                </div>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-bold text-muted" style="font-size:0.85rem;text-transform:uppercase;">Protein (g)</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-white text-success"><i class="bi bi-egg-fried"></i></span>
+                  <input type="number" class="form-control" name="protein" id="inputProtein" min="0" max="500" placeholder="e.g. 40">
+                </div>
+              </div>
+            </div>
+
+            <div class="row mb-4">
+              <div class="col-md-6 mb-3 mb-md-0">
+                <label class="form-label fw-bold text-muted" style="font-size:0.85rem;text-transform:uppercase;">Carbs (g)</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-white" style="color:var(--accent-dim);"><i class="bi bi-heptagon-fill"></i></span>
+                  <input type="number" class="form-control" name="carbs" id="inputCarbs" min="0" max="1000" placeholder="e.g. 70">
+                </div>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-bold text-muted" style="font-size:0.85rem;text-transform:uppercase;">Fats (g)</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-white text-danger"><i class="bi bi-droplet-fill"></i></span>
+                  <input type="number" class="form-control" name="fats" id="inputFats" min="0" max="500" placeholder="e.g. 20">
+                </div>
+              </div>
+            </div>
+
+            <div class="mb-4">
+              <label class="form-label fw-bold text-muted" style="font-size:0.85rem;text-transform:uppercase;">Water Intake (ml)</label>
+              <div class="input-group">
+                <span class="input-group-text bg-white text-info"><i class="bi bi-water"></i></span>
+                <input type="number" class="form-control" name="water_intake" min="0" max="10000" step="50" placeholder="e.g. 500">
+              </div>
+            </div>
+
+            <div class="mb-4">
+              <label class="form-label fw-bold text-muted" style="font-size:0.85rem;text-transform:uppercase;">Meal Description / Notes</label>
+              <textarea class="form-control bg-light" name="notes" id="notesField" rows="3" placeholder="What did you eat? E.g., Grilled chicken with quinoa and broccoli"></textarea>
+            </div>
+
+            <div class="alert fade show mb-4 mt-2 d-flex align-items-center gap-3" style="background:rgba(217,119,6,0.08); border:1px solid rgba(217,119,6,0.2); border-radius:var(--radius-md);">
+              <i class="bi bi-stars fs-4" style="color:#D97706;"></i>
+              <small class="text-dark"><strong>AI Coach:</strong> Log your meals accurately to get personalized dietary feedback on your dashboard.</small>
+            </div>
+
+            <button type="submit" class="btn btn-warning w-100 py-3 fw-bold mb-3 text-dark" style="border-radius:var(--radius-full); font-size:1.1rem; box-shadow:0 8px 24px rgba(217,119,6,0.2);">
+              <i class="bi bi-check-circle-fill"></i> Save Nutrition Log
+            </button>
+            <div class="text-center mt-3">
+                <a href="{{ url_for('athlete_dashboard') }}" class="text-muted text-decoration-none"><i class="bi bi-arrow-left"></i> Back to Dashboard</a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('btnPredict').addEventListener('click', async function() {
+    const foodItems = document.getElementById('foodQuery').value.trim();
+    if(!foodItems) return;
+    
+    const btn = this;
+    const originalText = btn.innerHTML;
+    const statusText = document.getElementById('predictStatus');
+    
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Predicting...';
+    btn.disabled = true;
+    statusText.innerText = "Analyzing nutritional content with AI...";
+    statusText.className = "text-info";
+
+    try {
+        const response = await fetch("{{ url_for('predict_nutrition') }}", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ food: foodItems })
+        });
+        const data = await response.json();
+        
+        if (data.calories !== undefined) {
+            document.getElementById('inputCalories').value = data.calories;
+            document.getElementById('inputProtein').value = data.protein;
+            document.getElementById('inputCarbs').value = data.carbs;
+            document.getElementById('inputFats').value = data.fats;
+            
+            // Auto add to notes
+            let notes = document.getElementById('notesField');
+            if(!notes.value.includes(foodItems)) {
+                notes.value = (notes.value ? notes.value + '\n' : '') + foodItems;
+            }
+            
+            statusText.innerText = "Macros successfully synced!";
+            statusText.className = "text-success fw-bold";
+        } else {
+            statusText.innerText = "Could not estimate. Please input manually.";
+            statusText.className = "text-danger";
+        }
+    } catch(err) {
+        statusText.innerText = "Error analyzing food.";
+        statusText.className = "text-danger";
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+});
+</script>
+{% endblock %}

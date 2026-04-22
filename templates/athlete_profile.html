@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+{% block title %}{{ athlete.name }}'s Profile - SportEquity{% endblock %}
+{% block content %}
+<div class="container-fluid px-4 py-3">
+
+  <div class="row align-items-center mb-4 stagger-fade">
+    <div class="col">
+        <h1 class="display-6 fw-bold mb-0" style="color:var(--primary); font-family:var(--font-display);">{{ athlete.name }}'s Profile</h1>
+        <p class="text-muted"><i class="bi bi-geo-alt"></i> {{ athlete.region }}</p>
+    </div>
+    {% if session.get('role') == 'admin' and not athlete.verified %}
+    <div class="col-auto">
+        <form method="POST" action="{{ url_for('admin_verify_athlete', athlete_id=athlete._id) }}">
+            <button class="btn btn-success"><i class="bi bi-check-circle"></i> Verify Athlete</button>
+        </form>
+    </div>
+    {% endif %}
+    {% if not public %}
+    <div class="col-auto">
+        <button class="btn btn-primary shadow-sm fw-bold" data-bs-toggle="modal" data-bs-target="#editProfileModal" style="border-radius: var(--radius-md);">
+            <i class="bi bi-pencil-square"></i> Edit Profile
+        </button>
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="row g-4 stagger-fade">
+    <!-- Left Column: Profile Card & SportScore -->
+    <div class="col-lg-4">
+      <div class="card mb-4 card-interactive" style="border-radius:var(--radius-xl); overflow:hidden;">
+        <div style="height: 120px; background: linear-gradient(135deg, var(--primary), var(--primary-container));"></div>
+        <div class="card-body text-center position-relative pt-0">
+            <div class="bg-white rounded-circle d-inline-flex justify-content-center align-items-center shadow-lg mx-auto" style="width: 100px; height: 100px; margin-top: -50px; font-family: var(--font-display); font-size: 2.5rem; color: var(--primary); font-weight: 800; border: 4px solid white;">
+                {{ athlete.name[0]|upper }}
+            </div>
+            <h3 class="mt-3 fw-bold" style="font-family:var(--font-display);">{{ athlete.name }}</h3>
+            
+            <div class="d-flex justify-content-center gap-2 mb-3 mt-2">
+                {% if athlete.verified %}
+                <span class="badge bg-success px-3 py-2" style="border-radius:var(--radius-full);"><i class="bi bi-patch-check-fill"></i> Verified</span>
+                {% else %}
+                <span class="badge bg-warning text-dark px-3 py-2" style="border-radius:var(--radius-full);">Pending Verification</span>
+                {% endif %}
+                <span class="badge bg-info px-3 py-2" style="border-radius:var(--radius-full);">{{ athlete.sport }}</span>
+            </div>
+            
+            <hr class="my-4" style="opacity:0.1;">
+            
+            <div class="row text-center mb-3">
+                <div class="col-6 border-end">
+                    <p class="text-muted mb-1" style="font-size:0.8rem;text-transform:uppercase;letter-spacing:0.05em;">Age</p>
+                    <h5 class="fw-bold">{{ athlete.age }}</h5>
+                </div>
+                <div class="col-6">
+                    <p class="text-muted mb-1" style="font-size:0.8rem;text-transform:uppercase;letter-spacing:0.05em;">Gender</p>
+                    <h5 class="fw-bold text-capitalize">{{ athlete.gender }}</h5>
+                </div>
+            </div>
+        </div>
+      </div>
+
+      <div class="stat-card-enhanced text-center card-interactive" style="background: linear-gradient(135deg, var(--surface-container-lowest), var(--surface-container)); border:1px solid rgba(74,225,118,0.3);">
+          <h6 class="text-uppercase text-muted" style="letter-spacing:2px; font-size:0.75rem;">SportScore Rating</h6>
+          <h1 class="display-3 fw-bold mt-2 mb-0" style="color:var(--primary-container); font-family:var(--font-display);" id="scoreBadge">{{ sport_score | default(0) }}</h1>
+          {% if performance %}
+          <p class="text-success mt-2 mb-0" style="font-weight:600;"><i class="bi bi-graph-up-arrow"></i> {{ performance.trend }}</p>
+          {% else %}
+          <p class="text-success mt-2 mb-0" style="font-weight:600;"><i class="bi bi-graph-up-arrow"></i> Active</p>
+          {% endif %}
+      </div>
+    </div>
+
+    <!-- Right Column: Stats & Charts & Bio -->
+    <div class="col-lg-8">
+      
+      {% if athlete.bio %}
+      <div class="card mb-4 card-interactive" style="border-radius:var(--radius-xl);">
+          <div class="card-body p-4">
+              <h5 class="border-bottom pb-2 mb-3 fw-bold text-primary"><i class="bi bi-person-lines-fill"></i> Biography</h5>
+              <p style="line-height:1.7; color:var(--ink-dark);">{{ athlete.bio }}</p>
+          </div>
+      </div>
+      {% endif %}
+
+      <div class="row g-3 mb-4">
+          <div class="col-md-4">
+              <div class="stat-card-enhanced tilt-card">
+                  <div class="stat-icon" style="color:var(--primary-container);"><i class="bi bi-activity"></i></div>
+                  <div class="stat-number text-primary">{{ training_logs|length if training_logs else 0 }}</div>
+                  <div class="stat-label">Training Sessions</div>
+              </div>
+          </div>
+          <div class="col-md-4">
+              <div class="stat-card-enhanced tilt-card">
+                  <div class="stat-icon" style="color:var(--error);"><i class="bi bi-heart-pulse"></i></div>
+                  <div class="stat-number text-danger">{{ health_records|length if health_records else 0 }}</div>
+                  <div class="stat-label">Health Records</div>
+              </div>
+          </div>
+          <div class="col-md-4">
+              <div class="stat-card-enhanced tilt-card">
+                  <div class="stat-icon" style="color:#D97706;"><i class="bi bi-cup-hot"></i></div>
+                  <div class="stat-number text-warning">{{ diet_logs|length if diet_logs else 0 }}</div>
+                  <div class="stat-label">Diet Logs</div>
+              </div>
+          </div>
+      </div>
+
+      <div class="card mb-4 card-interactive" style="border-radius:var(--radius-xl);">
+          <div class="card-header bg-white border-bottom-0 pt-4 pb-0 px-4">
+              <h5 class="fw-bold text-primary"><i class="bi bi-graph-up"></i> Performance History</h5>
+          </div>
+          <div class="card-body p-4">
+              <div class="chart-container" style="height: 300px;">
+                  <canvas id="profileTrainingChart"></canvas>
+              </div>
+          </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+{% if not public %}
+<!-- Edit Profile Modal -->
+<div class="modal fade" id="editProfileModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content" style="border-radius: var(--radius-lg); overflow: hidden; border: none; box-shadow: var(--shadow-xl);">
+            <div class="modal-header bg-light border-bottom-0 p-4">
+                <h5 class="modal-title fw-bold" style="font-family: var(--font-display);"><i class="bi bi-pencil-square text-primary"></i> Edit Profile</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('update_athlete_profile') }}">
+                <div class="modal-body p-4">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small text-muted text-uppercase">Full Name</label>
+                            <input type="text" name="name" class="form-control form-control-lg bg-surface" value="{{ athlete.name }}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small text-muted text-uppercase">Age</label>
+                            <input type="number" name="age" class="form-control form-control-lg bg-surface" value="{{ athlete.age }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small text-muted text-uppercase">Gender</label>
+                            <select name="gender" class="form-select form-select-lg bg-surface">
+                                <option value="Male" {% if athlete.gender == 'Male' %}selected{% endif %}>Male</option>
+                                <option value="Female" {% if athlete.gender == 'Female' %}selected{% endif %}>Female</option>
+                                <option value="Other" {% if athlete.gender == 'Other' %}selected{% endif %}>Other</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small text-muted text-uppercase">Sport Specialization</label>
+                            <input type="text" name="sport" class="form-control form-control-lg bg-surface" value="{{ athlete.sport }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small text-muted text-uppercase">Region / Location</label>
+                            <input type="text" name="region" class="form-control form-control-lg bg-surface" value="{{ athlete.region }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small text-muted text-uppercase">Profile Visibility</label>
+                            <select name="visibility" class="form-select form-select-lg bg-surface">
+                                <option value="private" {% if athlete.visibility == 'private' %}selected{% endif %}>Private</option>
+                                <option value="trainer" {% if athlete.visibility == 'trainer' %}selected{% endif %}>Trainer Only</option>
+                                <option value="public" {% if athlete.visibility == 'public' %}selected{% endif %}>Public</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-bold small text-muted text-uppercase">Biography</label>
+                            <textarea name="bio" class="form-control bg-surface" rows="4">{{ athlete.bio }}</textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-top-0 p-4 pt-2">
+                    <button type="button" class="btn btn-secondary px-4 fw-bold" data-bs-dismiss="modal" style="border-radius: var(--radius-md);">Cancel</button>
+                    <button type="submit" class="btn btn-primary px-4 fw-bold shadow-sm" style="border-radius: var(--radius-md);">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+    // Score Badge animation
+    const scoreBadge = document.getElementById('scoreBadge');
+    if (scoreBadge) animateScore(scoreBadge, parseInt(scoreBadge.textContent) || 0);
+
+    // Chart loading
+    const athleteId = "{{ athlete._id }}";
+    const data = await apiGet(`/api/athlete/${athleteId}/analytics`);
+    if (data && data.training && data.training.dates.length > 0) {
+        makeLineChart('profileTrainingChart', data.training.dates, [{
+            label: 'Training Intensity',
+            data: data.training.intensities,
+            borderColor: '#1E3A8A',
+            backgroundColor: 'rgba(30,58,138,0.1)',
+            fill: true,
+            tension: 0.4,
+            borderWidth: 3
+        }], 100);
+    } else {
+        const ctx = document.getElementById('profileTrainingChart');
+        if (ctx) {
+            ctx.parentNode.innerHTML = '<div class="empty-state h-100 d-flex flex-column align-items-center justify-content-center py-5"><i class="bi bi-graph-down" style="font-size:3rem;color:var(--ink-muted);"></i><p class="mt-3 text-muted">Not enough data to display performance history.</p></div>';
+        }
+    }
+});
+</script>
+{% endblock %}

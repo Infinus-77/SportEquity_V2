@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}Athlete ID Card - SportEquity{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4 mt-4 mb-5 stagger-fade">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="dashboard-header text-center mb-4">
+                <span class="section-eyebrow d-block mx-auto mb-2">Digital Identification</span>
+                <h1 style="font-size:2rem;"><i class="bi bi-card-text" style="color:var(--primary-container);"></i> Digital ID Card</h1>
+                <div class="subtitle mx-auto">Your verified SportEquity profile pass</div>
+            </div>
+            
+            <!-- ID Card Design -->
+            <div class="card card-interactive card-ripple mb-4 border-0 shadow-lg" style="border-radius: var(--radius-xl); overflow: hidden; background: linear-gradient(135deg, var(--primary), #0D1B4A); color: white;">
+                <div class="card-body p-5 position-relative text-center">
+                    <!-- Background Logo Watermark -->
+                    <i class="bi bi-trophy-fill position-absolute" style="font-size:12rem; color:rgba(255,255,255,0.03); top:50%; left:50%; transform:translate(-50%, -50%); pointer-events:none;"></i>
+                    
+                    <h3 class="mb-1" style="font-family:var(--font-display);font-weight:800;letter-spacing:1px;">{{ athlete.name }}</h3>
+                    <p class="mb-3" style="font-size: 0.95rem; color:rgba(74,225,118,0.9); font-weight:600; text-transform:uppercase; letter-spacing:0.05em;">
+                        {{ athlete.sport }} Athlete | {{ athlete.region }}
+                    </p>
+
+                    <!-- Statistics Strip -->
+                    <div class="row text-center mb-4 mx-1 pb-3" style="border-bottom: 1px dashed rgba(255,255,255,0.2);">
+                        <div class="col-4">
+                            <span class="d-block fw-bold" style="font-family:var(--font-display); font-size: 1.35rem; color: var(--accent);">{{ sport_score|default(0) }}</span>
+                            <span style="font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.05em; color: rgba(255,255,255,0.6);">SportScore</span>
+                        </div>
+                        <div class="col-4" style="border-left: 1px solid rgba(255,255,255,0.15); border-right: 1px solid rgba(255,255,255,0.15);">
+                            <span class="d-block fw-bold text-white" style="font-family:var(--font-display); font-size: 1.35rem;">{{ athlete.age|default('--') }}</span>
+                            <span style="font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.05em; color: rgba(255,255,255,0.6);">Age</span>
+                        </div>
+                        <div class="col-4">
+                            <span class="d-block fw-bold text-white text-capitalize" style="font-family:var(--font-display); font-size: 1rem; color: white; padding-top:0.35rem; line-height: 1;">{{ athlete.gender|default('--') }}</span>
+                            <span style="font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.05em; color: rgba(255,255,255,0.6);">Gender</span>
+                        </div>
+                    </div>
+
+                    <div class="d-inline-block p-3 bg-white" style="border-radius: var(--radius-lg); box-shadow: 0 10px 30px rgba(0,0,0,0.3); transition: transform 0.3s ease;">
+                        <img src="data:image/png;base64,{{ qr_code }}" alt="QR Code" style="width: 220px; height: 220px; display:block;">
+                    </div>
+
+                    <div class="mt-4 pt-4 px-3" style="border-top: 1px solid rgba(255,255,255,0.15); display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; text-transform:uppercase; letter-spacing:0.05em; color:rgba(255,255,255,0.7);">
+                        <div class="text-start">
+                            <span class="d-block text-white fw-bold mb-1">ID NUMBER</span>
+                            <span style="font-family: monospace; font-size:0.9rem;">{{ athlete._id|string|truncate(12, True, '...') }}</span>
+                        </div>
+                        <div class="text-end">
+                            <span class="d-block text-white fw-bold mb-1">ISSUED</span>
+                            <span>{{ athlete.created_at[:10] }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Info -->
+            <div class="card mb-4 card-interactive" style="border-radius:var(--radius-lg);">
+                <div class="card-body p-4">
+                    <h5 class="fw-bold text-primary mb-3"><i class="bi bi-info-circle-fill"></i> About Your ID</h5>
+                    <p class="text-muted" style="font-size:0.95rem;">This unique QR code links directly to your public athlete profile. Share it with coaches, scouts, and tournament organizers to instantly verify your identity and showcase your stats.</p>
+
+                    <div class="mt-4">
+                        <label class="form-label fw-bold" style="font-size:0.85rem;text-transform:uppercase;color:var(--ink-muted);">Public Profile Link</label>
+                        <div class="input-group drop-shadow">
+                            <input type="text" id="profileLinkInput" class="form-control" value="{{ qr_data }}" readonly>
+                            <button class="btn btn-outline-primary" type="button" onclick="copyProfileLink()"><i class="bi bi-clipboard"></i> Copy</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="d-flex gap-3">
+                <a href="{{ url_for('athlete_dashboard') }}" class="btn btn-outline-secondary py-2 flex-grow-1" style="border-radius:var(--radius-full);">
+                    <i class="bi bi-arrow-left"></i> Dashboard
+                </a>
+                <button onclick="window.print()" class="btn btn-primary py-2 flex-grow-1" style="border-radius:var(--radius-full);">
+                    <i class="bi bi-printer-fill"></i> Print ID Card
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function copyProfileLink() {
+    var copyText = document.getElementById("profileLinkInput");
+    copyText.select();
+    copyText.setSelectionRange(0, 99999);
+    navigator.clipboard.writeText(copyText.value);
+    alert("Profile link copied to clipboard!");
+}
+</script>
+{% endblock %}

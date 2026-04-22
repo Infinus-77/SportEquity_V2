@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Log Training - SportEquity{% endblock %}
+{% block content %}
+<div class="container-fluid px-4 py-4">
+  <div class="row justify-content-center stagger-fade">
+    <div class="col-md-9 col-lg-7">
+      
+      <div class="text-center mb-4">
+        <div class="d-inline-flex justify-content-center align-items-center bg-primary text-white mb-3 shadow" style="width:64px;height:64px;border-radius:50%;">
+            <i class="bi bi-activity fs-3"></i>
+        </div>
+        <h2 class="fw-bold" style="font-family:var(--font-display);">Log Training Session</h2>
+        <p class="text-muted">Track your performance and maintain your momentum</p>
+      </div>
+
+      <div class="card card-interactive shadow-sm border-0" style="border-radius:var(--radius-lg);">
+        <div class="card-body p-4 p-md-5">
+          <form method="POST">
+            <div class="row mb-4">
+              <div class="col-md-6 mb-3 mb-md-0">
+                <label class="form-label fw-bold text-muted" style="font-size:0.85rem;text-transform:uppercase;">Training Date <span class="text-danger">*</span></label>
+                <input type="date" class="form-control form-control-lg bg-light" name="date" value="{{ now }}" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-bold text-muted" style="font-size:0.85rem;text-transform:uppercase;">Workout Type <span class="text-danger">*</span></label>
+                <select class="form-select form-select-lg bg-light" name="workout_type" required>
+                  <option value="">Select type...</option>
+                  <option>Cardio</option>
+                  <option>Strength Training</option>
+                  <option>Flexibility / Stretching</option>
+                  <option>Sport Practice</option>
+                  <option>Sprint / Speed Work</option>
+                  <option>Agility Drills</option>
+                  <option>Competition</option>
+                  <option>Recovery / Cool Down</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="row mb-4">
+              <div class="col-md-6 mb-3 mb-md-0">
+                <label class="form-label fw-bold text-muted" style="font-size:0.85rem;text-transform:uppercase;">Duration (minutes) <span class="text-danger">*</span></label>
+                <div class="input-group">
+                  <span class="input-group-text bg-white text-primary"><i class="bi bi-stopwatch"></i></span>
+                  <input type="number" class="form-control form-control-lg" name="duration" min="1" max="480" placeholder="e.g. 60" required>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-bold text-muted" style="font-size:0.85rem;text-transform:uppercase;">Intensity Level</label>
+                <div class="card bg-light border-0 px-3 py-2 mt-1">
+                  <div class="d-flex justify-content-between align-items-center mb-1">
+                    <small class="text-muted">0 - Light</small>
+                    <small class="text-muted">Max - 100</small>
+                  </div>
+                  <div class="d-flex gap-3 align-items-center">
+                    <input type="range" class="form-range" id="intensityRange" name="intensity" min="0" max="100" value="50">
+                    <span id="intensityValue" class="badge bg-success" style="min-width:40px;font-size:1rem;border-radius:var(--radius-full);">50</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="mb-4 mt-2">
+              <label class="form-label fw-bold text-muted" style="font-size:0.85rem;text-transform:uppercase;">Session Notes</label>
+              <textarea class="form-control bg-light" name="notes" rows="3" placeholder="How did the session feel? Did you hit any PRs?"></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100 py-3 text-white fw-bold mt-2 mb-3" style="border-radius:var(--radius-full); font-size:1.1rem; box-shadow:0 8px 24px rgba(30,58,138,0.25);">
+              <i class="bi bi-file-earmark-check-fill me-2"></i> Log Session
+            </button>
+            <div class="text-center">
+                <a href="{{ url_for('athlete_dashboard') }}" class="text-muted text-decoration-none"><i class="bi bi-arrow-left"></i> Back to Dashboard</a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

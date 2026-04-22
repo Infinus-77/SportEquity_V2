@@ -1,0 +1,404 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — SportEquity{% endblock %}
+
+{% block content %}
+<div class="container-fluid px-4">
+
+    <!-- ── Banner Image ────────────────────────────────────── -->
+    <div class="page-banner">
+        <img src="{{ url_for('static', filename='img/training_action.png') }}" alt="Training">
+        <div class="banner-overlay">
+            <div class="banner-text">
+                <h3>Welcome back, {{ athlete.name.split()[0] }}!</h3>
+                <p>Track your progress and achieve your athletic goals</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Header + Score ─────────────────────────────────── -->
+    <div class="dashboard-header d-flex align-items-start justify-content-between flex-wrap gap-3">
+        <div>
+            <span class="section-eyebrow">Athlete Dashboard</span>
+            <h1 style="font-size:1.9rem;">Your Performance Overview</h1>
+            <div class="subtitle">Stay on top of training, health, and nutrition</div>
+        </div>
+        <div class="score-card" style="min-width:160px;">
+            <div class="score-number" id="scoreDisplay">{{ sport_score }}</div>
+            <div class="score-label">SportScore Rating</div>
+        </div>
+    </div>
+
+    <!-- ── Quick Stats (Enhanced) ────────────────────────── -->
+    <div class="row g-3 mb-4 stagger-fade">
+        <div class="col-6 col-md-3">
+            <div class="stat-card-enhanced card-ripple">
+                <div class="stat-icon" style="background:rgba(0,75,30,0.1);color:var(--tertiary-container);">
+                    <i class="bi bi-activity"></i>
+                </div>
+                <div class="stat-number text-success">{{ training_logs|length }}</div>
+                <div class="stat-label">Training Sessions</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card-enhanced card-ripple">
+                <div class="stat-icon" style="background:rgba(3,105,161,0.1);color:#0369A1;">
+                    <i class="bi bi-heart-pulse"></i>
+                </div>
+                <div class="stat-number text-info">{{ health_records|length }}</div>
+                <div class="stat-label">Health Records</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card-enhanced card-ripple">
+                <div class="stat-icon" style="background:rgba(217,119,6,0.1);color:#D97706;">
+                    <i class="bi bi-cup-hot"></i>
+                </div>
+                <div class="stat-number text-warning">{{ diet_logs|length }}</div>
+                <div class="stat-label">Diet Logs</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="stat-card-enhanced card-ripple">
+                <div class="stat-icon" style="background:rgba(186,26,26,0.1);color:var(--error);">
+                    <i class="bi bi-graph-up-arrow"></i>
+                </div>
+                <div class="stat-number text-danger">{{ performance.improvement }}</div>
+                <div class="stat-label">Performance
+                    <span class="badge {% if performance.trend == 'Improving' %}bg-success{% elif performance.trend == 'Declining' %}bg-danger{% else %}bg-secondary{% endif %}">
+                        {{ performance.trend }}
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Action Bar ──────────────────────────────────────── -->
+    <div class="action-bar">
+        <a href="{{ url_for('log_training') }}" class="btn btn-outline-primary btn-sm">
+            <i class="bi bi-activity"></i> Log Training
+        </a>
+        <a href="{{ url_for('log_health') }}" class="btn btn-outline-info btn-sm">
+            <i class="bi bi-heart-pulse"></i> Log Health
+        </a>
+        <a href="{{ url_for('log_diet') }}" class="btn btn-outline-warning btn-sm">
+            <i class="bi bi-cup-hot"></i> Log Diet
+        </a>
+        <a href="{{ url_for('appointments') }}" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-calendar-event"></i> Book Appointment
+        </a>
+    </div>
+
+    <!-- ── Image Cards Row ─────────────────────────────────── -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="img-card">
+                <img src="{{ url_for('static', filename='img/training_action.png') }}" alt="Training">
+                <div class="img-card-overlay">
+                    <h6>Training Hub</h6>
+                    <small>Track your workouts</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="img-card">
+                <img src="{{ url_for('static', filename='img/nutrition_meal.png') }}" alt="Nutrition">
+                <div class="img-card-overlay">
+                    <h6>Nutrition Center</h6>
+                    <small>AI-powered diet analysis</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="img-card">
+                <img src="{{ url_for('static', filename='img/sports_medicine.png') }}" alt="Health">
+                <div class="img-card-overlay">
+                    <h6>Health Monitoring</h6>
+                    <small>Keep your metrics in check</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Charts Row 1 ────────────────────────────────────── -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-6">
+            <div class="card h-100 card-interactive card-ripple">
+                <div class="card-header bg-primary text-white">Training Intensity — Last 7 Days</div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="trainingChart"></canvas>
+                    </div>
+                </div>
+                <i class="bi bi-activity card-icon-float"></i>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card h-100 card-interactive card-ripple">
+                <div class="card-header bg-info text-white">Latest Health Metrics</div>
+                <div class="card-body">
+                    {% if health_records %}
+                        {% set lh = health_records[0] %}
+                        <div class="row g-3 stagger-fade">
+                            <div class="col-6">
+                                <div class="stat-card-enhanced" style="padding:1rem;">
+                                    <div class="stat-number text-danger" style="font-size:1.6rem;">{{ lh.get('heart_rate', 'N/A') }}</div>
+                                    <div class="stat-label">Heart Rate (bpm)</div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="stat-card-enhanced" style="padding:1rem;">
+                                    <div class="stat-number text-warning" style="font-size:1.6rem;">{{ "%.1f"|format(lh.get('bmi', 0)) }}</div>
+                                    <div class="stat-label">BMI</div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="stat-card-enhanced" style="padding:1rem;">
+                                    <div class="stat-number text-info" style="font-size:1.3rem;">{{ lh.get('blood_pressure', 'N/A') }}</div>
+                                    <div class="stat-label">Blood Pressure</div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="stat-card-enhanced" style="padding:1rem;">
+                                    <div class="stat-number text-success" style="font-size:1.6rem;">{{ lh.get('sleep_hours', 'N/A') }}h</div>
+                                    <div class="stat-label">Sleep Hours</div>
+                                </div>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="empty-state">
+                            <i class="bi bi-heart-pulse"></i>
+                            <p>No health records yet.<br><a href="{{ url_for('log_health') }}">Add your first record</a></p>
+                        </div>
+                    {% endif %}
+                </div>
+                <i class="bi bi-heart-pulse card-icon-float"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Charts Row 2 ────────────────────────────────────── -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-6">
+            <div class="card card-interactive card-ripple">
+                <div class="card-header bg-success text-white">Weight Trend</div>
+                <div class="card-body">
+                    <div class="chart-container"><canvas id="weightTrendChart"></canvas></div>
+                </div>
+                <i class="bi bi-graph-up card-icon-float"></i>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card card-interactive card-ripple">
+                <div class="card-header bg-warning text-white">Daily Calorie Intake</div>
+                <div class="card-body">
+                    <div class="chart-container"><canvas id="calorieIntakeChart"></canvas></div>
+                </div>
+                <i class="bi bi-cup-hot card-icon-float"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Charts Row 3 ────────────────────────────────────── -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-6">
+            <div class="card card-interactive card-ripple">
+                <div class="card-header bg-danger text-white">Heart Rate Trend</div>
+                <div class="card-body">
+                    <div class="chart-container"><canvas id="heartRateTrendChart"></canvas></div>
+                </div>
+                <i class="bi bi-heart card-icon-float"></i>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card card-interactive card-ripple">
+                <div class="card-header bg-info text-white">BMI Progress</div>
+                <div class="card-body">
+                    <div class="chart-container"><canvas id="bmiChart"></canvas></div>
+                </div>
+                <i class="bi bi-speedometer card-icon-float"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Diet + Recent Sessions ──────────────────────────── -->
+    <div class="row g-4 mb-4">
+        <div class="col-lg-6">
+            <div class="card h-100 card-interactive">
+                <div class="card-header bg-warning text-white">Diet Analysis</div>
+                <div class="card-body">
+                    <div id="dietAnalysis">
+                        <div class="empty-state"><i class="bi bi-hourglass-split"></i><p>Loading analysis…</p></div>
+                    </div>
+                </div>
+                <i class="bi bi-egg-fried card-icon-float"></i>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card h-100 card-interactive">
+                <div class="card-header bg-success text-white">Recent Training Sessions</div>
+                <div class="card-body" style="padding:1rem;">
+                    {% if training_logs %}
+                        {% for log in training_logs[:5] %}
+                        <div class="list-group-item d-flex justify-content-between align-items-start" style="margin-bottom:0.4rem;">
+                            <div>
+                                <div style="font-weight:600;font-size:0.9rem;">{{ log.workout_type }}</div>
+                                <small class="text-muted">{{ log.duration }} min · Intensity {{ log.intensity }}/100</small>
+                                {% if log.notes %}<br><small class="text-muted">{{ log.notes }}</small>{% endif %}
+                            </div>
+                            <small class="text-muted text-nowrap ms-2">{{ log.date }}</small>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="empty-state">
+                            <i class="bi bi-activity"></i>
+                            <p>No sessions yet.<br><a href="{{ url_for('log_training') }}">Start logging</a></p>
+                        </div>
+                    {% endif %}
+                </div>
+                <i class="bi bi-lightning card-icon-float"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Diet Logs Table ─────────────────────────────────── -->
+    <div class="card mb-4 card-interactive">
+        <div class="card-header bg-primary text-white">Diet Logs</div>
+        <div class="card-body p-0">
+            {% if diet_logs %}
+            <div class="table-responsive">
+                <table class="table mb-0">
+                    <thead>
+                        <tr>
+                            <th>Date</th><th>Meal</th><th>Calories</th>
+                            <th>Protein</th><th>Carbs</th><th>Fats</th>
+                            <th>Water</th><th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in diet_logs %}
+                        <tr>
+                            <td><small>{{ log.date }}</small></td>
+                            <td><strong>{{ log.meal }}</strong></td>
+                            <td><span class="badge bg-info">{{ log.calories }}</span></td>
+                            <td><span class="badge bg-success">{{ log.protein }}g</span></td>
+                            <td><span class="badge bg-warning">{{ log.carbs }}g</span></td>
+                            <td><span class="badge bg-danger">{{ log.fats }}g</span></td>
+                            <td><span class="badge bg-primary">{{ log.water_intake }}ml</span></td>
+                            <td><small class="text-muted">{{ log.notes if log.notes else '—' }}</small></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state py-4">
+                <i class="bi bi-journal-text"></i>
+                <p>No diet logs yet. <a href="{{ url_for('log_diet') }}">Log your first meal</a></p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+const CHART_COLORS = {
+  olive:   '#1E3A8A', oliveLight: '#2850A8',
+  amber:   '#D97706', rust:   '#BA1A1A',
+  sky:     '#0369A1', cream:  'rgba(30,58,138,0.08)'
+};
+
+async function loadAnalytics() {
+    const athleteId = "{{ athlete._id }}";
+    try {
+        const data = await apiGet(`/api/athlete/${athleteId}/analytics`);
+        if (!data) return;
+
+        makeLineChart('trainingChart', data.training.dates, [{
+            label:'Intensity', data: data.training.intensities,
+            borderColor: CHART_COLORS.olive, backgroundColor: CHART_COLORS.cream,
+            borderWidth: 2, tension: 0.4, fill: true
+        }], 100);
+
+        if (data.health?.weights?.length) {
+            makeLineChart('weightTrendChart', data.health.dates, [{
+                label:'Weight (kg)', data: data.health.weights,
+                borderColor: CHART_COLORS.oliveLight, backgroundColor: CHART_COLORS.cream,
+                borderWidth: 2, tension: 0.4, fill: true
+            }]);
+        }
+
+        if (data.diet?.calories?.length) {
+            makeBarChart('calorieIntakeChart', data.diet.dates, [{
+                label:'Calories', data: data.diet.calories,
+                backgroundColor: CHART_COLORS.amber + 'cc',
+                borderColor: CHART_COLORS.amber, borderWidth: 1
+            }]);
+        }
+
+        if (data.health?.heart_rates?.length) {
+            makeLineChart('heartRateTrendChart', data.health.dates, [{
+                label:'Heart Rate (bpm)', data: data.health.heart_rates,
+                borderColor: CHART_COLORS.rust, backgroundColor: 'rgba(186,26,26,0.06)',
+                borderWidth: 2, tension: 0.4, fill: true
+            }]);
+        }
+
+        if (data.health?.bmis?.length) {
+            makeLineChart('bmiChart', data.health.dates, [{
+                label:'BMI', data: data.health.bmis,
+                borderColor: CHART_COLORS.sky, backgroundColor: 'rgba(3,105,161,0.06)',
+                borderWidth: 2, tension: 0.4, fill: true
+            }]);
+        }
+    } catch (e) { console.error(e); }
+}
+
+async function loadDietAnalysis() {
+    const athleteId = "{{ athlete._id }}";
+    try {
+        const data = await apiGet(`/api/athlete/${athleteId}/diet-analysis`);
+        let html = '';
+        if (!data || data.error) {
+            html = `<div class="empty-state"><i class="bi bi-exclamation-circle"></i><p>${(data && data.error) || 'Could not load analysis.'}</p></div>`;
+        } else if (data.daily_analysis) {
+            html = `<div class="alert alert-success mb-3"><strong>AI Nutrition Summary</strong><br>${data.daily_analysis.replace(/\n/g,'<br>')}</div>`;
+            if (data.stats?.avg_calories) {
+                html += `<small class="text-muted">Avg: <strong>${data.stats.avg_calories.toFixed(0)}</strong> kcal/day · <strong>${data.stats.avg_protein.toFixed(0)}</strong>g protein</small>`;
+            }
+        } else if (data.status) {
+            data.status.forEach(s => {
+                const ok = s.startsWith('✅') || s.includes('optimal');
+                html += `<div class="alert ${ok ? 'alert-success' : 'alert-warning'} py-2 mb-2">${s}</div>`;
+            });
+            if (data.recommendations?.length) {
+                html += `<div class="mt-2"><strong>Recommendations</strong><ul class="mb-0 mt-1">`;
+                data.recommendations.forEach(r => { html += `<li style="font-size:0.875rem;">${r}</li>`; });
+                html += `</ul></div>`;
+            }
+        } else {
+            html = `<div class="empty-state"><i class="bi bi-journal-text"></i><p>Log some meals to see analysis.</p></div>`;
+        }
+        document.getElementById('dietAnalysis').innerHTML = html;
+    } catch (e) {
+        document.getElementById('dietAnalysis').innerHTML = '<p class="text-danger">Error loading analysis.</p>';
+    }
+}
+
+async function triggerEmergency() {
+    try {
+        const data = await apiPost('{{ url_for("trigger_emergency") }}', {});
+        alert(data.message);
+        location.reload();
+    } catch (e) { alert('Error triggering emergency'); }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadAnalytics();
+    loadDietAnalysis();
+    // Animate sport score
+    const el = document.getElementById('scoreDisplay');
+    const target = parseInt(el.textContent) || 0;
+    animateScore(el, target);
+});
+</script>
+{% endblock %}

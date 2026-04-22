@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% block title %}Admin Statistics - SportEquity{% endblock %}
+{% block content %}
+<div class="container-fluid px-4">
+
+  <div class="dashboard-header d-flex align-items-start justify-content-between flex-wrap gap-3 stagger-fade">
+    <div>
+      <span class="section-eyebrow">Analytics</span>
+      <h1 style="font-size:1.9rem;"><i class="bi bi-bar-chart-line" style="color:var(--primary-container);"></i> Region Statistics</h1>
+      <div class="subtitle">{{ admin.full_name }} · {{ admin_region or 'All Regions' }}</div>
+    </div>
+    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> Back to Dashboard</a>
+  </div>
+
+  <!-- Top Stats -->
+  <div class="row g-3 mb-4 stagger-fade">
+    {% for label,val,color in [
+      ('Total Athletes',total_athletes,'primary'),
+      ('Verified',verified_athletes,'success'),
+      ('Pending',pending_athletes,'warning'),
+      ('Avg SportScore',avg_sport_score,'info')
+    ] %}
+    <div class="col-md-3">
+      <div class="stat-card-enhanced card-ripple tilt-card">
+        <div class="stat-number text-{{ color }}">{{ val }}</div>
+        <div class="stat-label" style="font-size:0.85rem;">{{ label }}</div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Activity Stats -->
+  <div class="row g-3 mb-4 stagger-fade">
+    {% for label,val,icon,color in [
+      ('Training Sessions',total_training_logs,'bi-activity','success'),
+      ('Health Records',total_health_records,'bi-heart-pulse','danger'),
+      ('Diet Logs',total_diet_logs,'bi-cup-hot','warning')
+    ] %}
+    <div class="col-md-4">
+      <div class="card card-interactive card-ripple text-center py-4">
+        <i class="bi {{ icon }} fs-1 mb-2" style="color:var(--{{ color }});"></i>
+        <h3 class="mt-2" style="font-family:var(--font-display);font-weight:800;">{{ val }}</h3>
+        <p class="text-muted mb-0">{{ label }}</p>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Sports Breakdown -->
+  <div class="row g-4 mb-4 stagger-fade">
+    <div class="col-md-6">
+      <div class="card card-interactive h-100">
+        <div class="card-header bg-primary text-white"><h5 class="mb-0"><i class="bi bi-pie-chart"></i> Sports Distribution</h5></div>
+        <div class="card-body">
+          {% if sports_breakdown %}
+            {% for sport, count in sports_breakdown.items() %}
+            <div class="d-flex justify-content-between align-items-center mb-3 p-2" style="background:var(--surface-container-lowest);border-radius:var(--radius-md);">
+              <span class="badge bg-info p-2">{{ sport }}</span>
+              <div class="d-flex align-items-center gap-2" style="width: 50%;">
+                <div class="progress flex-grow-1" style="height:10px; border-radius:10px;">
+                  <div class="progress-bar bg-info" style="width:{{ (count/total_athletes*100)|round }}%"></div>
+                </div>
+                <strong style="width: 30px; text-align: right;">{{ count }}</strong>
+              </div>
+            </div>
+            {% endfor %}
+          {% else %}
+            <div class="empty-state">
+              <i class="bi bi-clipboard-data"></i>
+              <p>No sport data yet.</p>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-6">
+      <div class="card card-interactive h-100">
+        <div class="card-header bg-success text-white"><h5 class="mb-0"><i class="bi bi-graph-up"></i> Overview Chart</h5></div>
+        <div class="card-body d-flex align-items-center justify-content-center">
+          <div style="width: 100%; max-width: 400px;">
+            <canvas id="statsChart" height="250"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Athlete Details -->
+  <div class="card card-interactive mb-4 stagger-fade">
+    <div class="card-header bg-dark text-white"><h5 class="mb-0"><i class="bi bi-table"></i> Athlete Activity Details</h5></div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead>
+            <tr><th>Athlete</th><th>Sport</th><th>Region</th><th>SportScore</th><th>Training</th><th>Health</th><th>Diet</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            {% if athletes %}{% for row in athletes %}
+            <tr>
+              <td><strong>{{ row.athlete.name }}</strong></td>
+              <td><span class="badge bg-info">{{ row.athlete.sport or '—' }}</span></td>
+              <td>{{ row.athlete.region or '—' }}</td>
+              <td>
+                <span class="badge {% if row.sport_score >= 70 %}bg-success{% elif row.sport_score >= 40 %}bg-warning text-dark{% else %}bg-danger{% endif %}">
+                  {{ row.sport_score|round }}
+                </span>
+              </td>
+              <td>{{ row.training_sessions }}</td>
+              <td>{{ row.health_records }}</td>
+              <td>{{ row.diet_logs }}</td>
+              <td>{% if row.athlete.verified %}<span class="badge bg-success">Verified</span>{% else %}<span class="badge bg-warning text-dark">Pending</span>{% endif %}</td>
+            </tr>
+            {% endfor %}{% else %}
+            <tr><td colspan="8" class="text-center text-muted py-5"><div class="empty-state"><i class="bi bi-people"></i><p>No athlete data</p></div></td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const ctxEl = document.getElementById('statsChart');
+  if (ctxEl) {
+    const ctx = ctxEl.getContext('2d');
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ['Athletes','Training','Health','Diet'],
+        datasets: [{
+          label: 'Count',
+          data: [{{ total_athletes }}, {{ total_training_logs }}, {{ total_health_records }}, {{ total_diet_logs }}],
+          backgroundColor: ['#1E3A8A','#4AE176','#D42121','#D97706'],
+          borderRadius: 8
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: { 
+          x: { grid: { display:false } },
+          y: { beginAtZero: true, grid: { color:'rgba(197,197,211,0.2)' } } 
+        }
+      }
+    });
+  }
+});
+</script>
+{% endblock %}
+{% endblock %}

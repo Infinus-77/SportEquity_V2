@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% block title %}Log Health - SportEquity{% endblock %}
+{% block content %}
+<div class="container-fluid px-4 py-4">
+  <div class="row justify-content-center stagger-fade">
+    <div class="col-md-8 col-lg-6">
+      
+      <div class="text-center mb-4">
+        <div class="d-inline-flex justify-content-center align-items-center bg-info text-white mb-3 shadow" style="width:64px;height:64px;border-radius:50%;">
+            <i class="bi bi-heart-pulse-fill fs-3"></i>
+        </div>
+        <h2 class="fw-bold" style="font-family:var(--font-display);">Record Health Data</h2>
+        <p class="text-muted">Keep your medical profile up to date for precise AI insights</p>
+      </div>
+
+      <div class="card card-interactive shadow-sm border-0" style="border-radius:var(--radius-lg);">
+        <div class="card-body p-4 p-md-5">
+          <form method="POST">
+            <div class="mb-4">
+              <label class="form-label fw-bold">Date of Record <span class="text-danger">*</span></label>
+              <input type="date" class="form-control form-control-lg bg-light" name="date" value="{{ now }}" required>
+            </div>
+            
+            <div class="row mb-4">
+              <div class="col-md-6 mb-3 mb-md-0">
+                <label class="form-label fw-bold text-muted" style="font-size:0.85rem;text-transform:uppercase;">Height (cm)</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-white"><i class="bi bi-arrows-vertical text-info"></i></span>
+                  <input type="number" class="form-control" name="height" min="100" max="250" step="0.5" placeholder="e.g. 175">
+                </div>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-bold text-muted" style="font-size:0.85rem;text-transform:uppercase;">Weight (kg)</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-white"><i class="bi bi-speedometer2 text-info"></i></span>
+                  <input type="number" class="form-control" name="weight" min="30" max="200" step="0.1" placeholder="e.g. 68">
+                </div>
+              </div>
+            </div>
+
+            <div class="row mb-4">
+              <div class="col-md-6 mb-3 mb-md-0">
+                <label class="form-label fw-bold text-muted" style="font-size:0.85rem;text-transform:uppercase;">Resting Heart Rate</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-white text-danger"><i class="bi bi-heart-fill"></i></span>
+                  <input type="number" class="form-control" name="heart_rate" min="30" max="150" placeholder="bpm">
+                </div>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-bold text-muted" style="font-size:0.85rem;text-transform:uppercase;">Blood Pressure</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-white text-info"><i class="bi bi-droplet-half"></i></span>
+                  <input type="text" class="form-control" name="blood_pressure" placeholder="e.g. 120/80">
+                </div>
+              </div>
+            </div>
+
+            <div class="row mb-4">
+              <div class="col-md-6 mb-3 mb-md-0">
+                <label class="form-label fw-bold text-muted" style="font-size:0.85rem;text-transform:uppercase;">Sleep Hours</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-white text-primary"><i class="bi bi-moon-stars-fill"></i></span>
+                  <input type="number" class="form-control" name="sleep_hours" min="0" max="14" step="0.5" placeholder="e.g. 8">
+                </div>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-bold text-muted" style="font-size:0.85rem;text-transform:uppercase;">Injuries / Pain</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-white text-warning"><i class="bi bi-bandaid-fill"></i></span>
+                  <input type="text" class="form-control" name="injury_notes" placeholder="Note any issues">
+                </div>
+              </div>
+            </div>
+
+            <div class="alert fade show mb-4 d-flex align-items-center gap-3" style="background:rgba(30,58,138,0.05); border:1px solid rgba(30,58,138,0.1); border-radius:var(--radius-md);">
+              <i class="bi bi-shield-check fs-4 text-info"></i>
+              <small class="text-dark"><strong>Data Privacy:</strong> Your metrics are secure and only visible to you and your verified sports doctors.</small>
+            </div>
+
+            <button type="submit" class="btn btn-info w-100 py-3 text-white fw-bold mb-3" style="border-radius:var(--radius-full); font-size:1.1rem; box-shadow:0 8px 24px rgba(3,105,161,0.3);">
+              <i class="bi bi-check-circle-fill me-2"></i> Save Record
+            </button>
+            <div class="text-center">
+                <a href="{{ url_for('athlete_dashboard') }}" class="text-muted text-decoration-none"><i class="bi bi-arrow-left"></i> Back to Dashboard</a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

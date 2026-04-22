@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+{% block title %}Doctor Dashboard - SportEquity{% endblock %}
+{% block content %}
+<div class="container-fluid px-4">
+
+  <!-- ── Banner ─────────────────────────────────────────── -->
+  <div class="page-banner">
+    <img src="{{ url_for('static', filename='img/sports_medicine.png') }}" alt="Sports Medicine">
+    <div class="banner-overlay">
+      <div class="banner-text">
+        <h3>Sports Medicine Hub</h3>
+        <p>Monitor athlete health and manage consultations</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="dashboard-header d-flex align-items-start justify-content-between flex-wrap gap-3">
+    <div>
+      <span class="section-eyebrow">Doctor Dashboard</span>
+      <h1 style="font-size:1.9rem;"><i class="bi bi-hospital" style="color:var(--primary-container);"></i> {{ doctor.full_name }}</h1>
+      <div class="subtitle">Sports Medicine</div>
+    </div>
+    <span class="badge bg-primary" style="font-size:0.85rem;padding:0.5em 1em;">{{ doctor.full_name }}</span>
+  </div>
+
+  <!-- ── Stats (Enhanced) ───────────────────────────────── -->
+  <div class="row g-3 mb-4 stagger-fade">
+    {% for label,val,color,icon in [('Health Records',health_records|length,'info','bi-heart-pulse-fill'),('My Appointments',appointments|length,'success','bi-calendar-event-fill'),('Emergency Alerts',emergencies|length,'danger','bi-exclamation-triangle-fill'),('Athletes',athletes|length,'primary','bi-people-fill')] %}
+    <div class="col-md-3">
+      <div class="stat-card-enhanced card-ripple tilt-card">
+        <div class="stat-icon" style="background:rgba(30,58,138,0.08);color:var(--primary-container);">
+          <i class="bi {{ icon }}"></i>
+        </div>
+        <div class="stat-number text-{{ color }}">{{ val }}</div>
+        <div class="stat-label">{{ label }}</div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- ── Image Cards ────────────────────────────────────── -->
+  <div class="row g-3 mb-4">
+    <div class="col-md-6">
+      <div class="img-card">
+        <img src="{{ url_for('static', filename='img/sports_medicine.png') }}" alt="Health">
+        <div class="img-card-overlay">
+          <h6>Health Records</h6>
+          <small>Review and monitor athlete metrics</small>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="img-card">
+        <img src="{{ url_for('static', filename='img/training_action.png') }}" alt="Athletes">
+        <div class="img-card-overlay">
+          <h6>Athlete Care</h6>
+          <small>Comprehensive sports medicine support</small>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Emergency Alerts -->
+  {% if emergencies %}
+  <div class="alert alert-danger">
+    <h5><i class="bi bi-exclamation-triangle"></i> Active Emergency Alerts</h5>
+    {% for em in emergencies %}
+    <div class="d-flex justify-content-between align-items-center py-2" style="border-bottom:1px solid rgba(186,26,26,0.15);">
+      <div><strong>{{ em.athlete_name }}</strong> — triggered at {{ em.triggered_at[:19] }}</div>
+      <span class="badge bg-danger">ACTIVE</span>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- My Appointments -->
+  <div class="card mb-4 card-interactive">
+    <div class="card-header bg-success text-white"><h5 class="mb-0"><i class="bi bi-calendar-check"></i> My Appointments</h5></div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead><tr><th>Athlete</th><th>Type</th><th>Date</th><th>Time</th><th>Status</th><th>Notes</th><th>Actions</th></tr></thead>
+          <tbody>
+            {% if appointments %}
+              {% for a in appointments %}
+              <tr>
+                <td><strong>{{ a.athlete_name }}</strong></td>
+                <td><span class="badge bg-info">{{ a.type }}</span></td>
+                <td>{{ a.appointment_date }}</td>
+                <td>{{ a.time or '—' }}</td>
+                <td><span class="badge {% if a.status=='confirmed' %}bg-success{% elif a.status=='pending' %}bg-warning text-dark{% else %}bg-danger{% endif %}">{{ a.status|capitalize }}</span></td>
+                <td><small>{{ a.notes or '—' }}</small></td>
+                <td>
+                  {% if a.status == 'pending' %}
+                  <form method="POST" action="{{ url_for('update_appointment', appointment_id=a._id) }}" style="display:inline;">
+                    <input type="hidden" name="status" value="confirmed">
+                    <button type="submit" class="btn btn-sm btn-success" title="Approve"><i class="bi bi-check-lg"></i></button>
+                  </form>
+                  {% endif %}
+                  {% if a.status != 'cancelled' %}
+                  <form method="POST" action="{{ url_for('update_appointment', appointment_id=a._id) }}" style="display:inline;">
+                    <input type="hidden" name="status" value="cancelled">
+                    <button type="submit" class="btn btn-sm btn-outline-danger" title="Cancel/Reject"><i class="bi bi-x-lg"></i></button>
+                  </form>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            {% else %}
+              <tr><td colspan="7" class="text-center text-muted py-4">No appointments assigned to you yet.</td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <i class="bi bi-calendar-check card-icon-float"></i>
+  </div>
+
+  <!-- Health Records -->
+  <div class="card mb-4 card-interactive">
+    <div class="card-header bg-primary text-white"><h5 class="mb-0"><i class="bi bi-heart-pulse"></i> Recent Health Records</h5></div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead><tr><th>Athlete</th><th>Date</th><th>Heart Rate</th><th>Blood Pressure</th><th>BMI</th><th>Sleep</th></tr></thead>
+          <tbody>
+            {% if health_records %}
+              {% for rec in health_records[:15] %}
+              <tr>
+                <td><strong>{{ ath_map.get(rec.athlete_id|string, {}).get('name','Unknown') }}</strong></td>
+                <td>{{ rec.date }}</td>
+                <td><span class="badge bg-info">{{ rec.heart_rate }} bpm</span></td>
+                <td>{{ rec.blood_pressure }}</td>
+                <td>
+                  {% set bmi = rec.bmi|float %}
+                  <span class="badge {% if bmi < 18.5 or bmi > 30 %}bg-danger{% elif bmi > 25 %}bg-warning text-dark{% else %}bg-success{% endif %}">
+                    {{ "%.1f"|format(bmi) }}
+                  </span>
+                </td>
+                <td>{{ rec.sleep_hours }}h</td>
+              </tr>
+              {% endfor %}
+            {% else %}
+              <tr><td colspan="6" class="text-center text-muted py-4">No health records yet</td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <i class="bi bi-heart-pulse card-icon-float"></i>
+  </div>
+
+  <!-- Athletes List -->
+  <div class="card card-interactive">
+    <div class="card-header bg-info text-white"><h5 class="mb-0"><i class="bi bi-people"></i> Athletes</h5></div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-sm mb-0">
+          <thead><tr><th>Name</th><th>Age</th><th>Sport</th><th>Region</th><th>Actions</th></tr></thead>
+          <tbody>
+            {% if athletes %}{% for a in athletes[:20] %}
+            <tr>
+              <td>{{ a.name }}</td><td>{{ a.age }}</td><td>{{ a.sport }}</td><td>{{ a.region }}</td>
+              <td><a href="{{ url_for('public_athlete_profile', athlete_id=a._id) }}" class="btn btn-sm btn-outline-primary">View</a></td>
+            </tr>
+            {% endfor %}{% else %}
+            <tr><td colspan="5" class="text-center text-muted py-4">No athletes</td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <i class="bi bi-people card-icon-float"></i>
+  </div>
+</div>
+{% endblock %}
