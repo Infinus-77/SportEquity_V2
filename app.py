@@ -1033,4 +1033,7 @@ def not_found(e): return render_template('404.html'), 404
 def server_error(e): return render_template('500.html'), 500
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=4000)
+    host = os.getenv('HOST', '0.0.0.0')
+    port = int(os.getenv('PORT', 4000))
+    debug = os.getenv('FLASK_DEBUG', 'True').lower() == 'true'
+    app.run(debug=debug, host=host, port=port)
