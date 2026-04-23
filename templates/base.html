@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}SportEquity — AI-Powered Sports Inclusion Platform{% endblock %}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.0/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
@@ -30,6 +30,13 @@
             </li>
 
             {% if session.get('user_id') %}
+                <!-- Voice Command Toggle -->
+                <li class="nav-item me-2">
+                    <button class="btn btn-sm btn-outline-light" id="voiceCommandBtn" title="Voice Commands" style="border-radius: 50%; width: 38px; height: 38px; padding: 0; display: flex; align-items: center; justify-content: center; border-color: rgba(255,255,255,0.3);">
+                        <i class="bi bi-mic-fill"></i>
+                    </button>
+                </li>
+                
                 {% if session.get('role') == 'athlete' %}
                 <li class="nav-item">
                     <button class="btn btn-sm btn-danger fw-bold shadow-sm" type="button" data-bs-toggle="modal" data-bs-target="#emergencyModal" style="border-radius: 8px; padding: 0.4rem 0.8rem;">
@@ -164,6 +171,18 @@
                     <button type="button" class="btn btn-danger" onclick="triggerGlobalEmergency()">
                         <i class="bi bi-exclamation-triangle-fill"></i> Yes, Send Alert!
                     </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Voice Command Status Toast -->
+    <div class="position-fixed bottom-0 start-50 translate-middle-x mb-4" style="z-index: 1100;">
+        <div id="voiceStatusToast" class="toast align-items-center text-white bg-primary border-0" role="alert" aria-live="assertive" aria-atomic="true" style="border-radius: var(--radius-lg); box-shadow: var(--shadow-xl);">
+            <div class="d-flex p-3">
+                <div class="toast-body d-flex align-items-center gap-3">
+                    <div class="voice-pulse" id="voiceIndicator"></div>
+                    <span id="voiceStatusText">Listening for commands...</span>
                 </div>
             </div>
         </div>

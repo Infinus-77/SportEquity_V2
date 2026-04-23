@@ -111,6 +111,11 @@
                     </td>
                     <td><small>{{ a.notes or '—' }}</small></td>
                     <td>
+                      {% if session.get('role') == 'athlete' and a.status == 'confirmed' %}
+                        <a href="{{ url_for('appointment_letter', appointment_id=a._id) }}" target="_blank" class="btn btn-sm btn-outline-primary" title="View Appointment Letter">
+                          <i class="bi bi-file-earmark-text"></i> Letter
+                        </a>
+                      {% endif %}
                       {% if session.get('role') in ['doctor', 'trainer'] and a.status == 'pending' %}
                         <form method="POST" action="{{ url_for('update_appointment', appointment_id=a._id) }}" style="display:inline;">
                           <input type="hidden" name="status" value="confirmed">

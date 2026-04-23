@@ -39,6 +39,42 @@
                         </div>
                     </div>
 
+                    <!-- Advanced Analytics Strip -->
+                    <div class="row text-center mb-4 mx-1 pb-3" style="border-bottom: 1px dashed rgba(255,255,255,0.2);">
+                        <div class="col-3">
+                            <span class="d-block fw-bold text-white" style="font-family:var(--font-display); font-size: 1rem;">{{ training_count|default(0) }}</span>
+                            <span style="font-size: 0.55rem; text-transform: uppercase; letter-spacing: 0.05em; color: rgba(255,255,255,0.6);">Sessions</span>
+                        </div>
+                        <div class="col-3" style="border-left: 1px solid rgba(255,255,255,0.15);">
+                            <span class="d-block fw-bold text-white" style="font-family:var(--font-display); font-size: 1rem;">{{ health_count|default(0) }}</span>
+                            <span style="font-size: 0.55rem; text-transform: uppercase; letter-spacing: 0.05em; color: rgba(255,255,255,0.6);">Health</span>
+                        </div>
+                        <div class="col-3" style="border-left: 1px solid rgba(255,255,255,0.15);">
+                            <span class="d-block fw-bold text-white" style="font-family:var(--font-display); font-size: 1rem;">{{ diet_count|default(0) }}</span>
+                            <span style="font-size: 0.55rem; text-transform: uppercase; letter-spacing: 0.05em; color: rgba(255,255,255,0.6);">Diet</span>
+                        </div>
+                        <div class="col-3" style="border-left: 1px solid rgba(255,255,255,0.15);">
+                            <span class="d-block fw-bold" style="font-family:var(--font-display); font-size: 0.85rem; color: {% if performance.trend == 'Improving' %}#4AE176{% elif performance.trend == 'Declining' %}#FF4D4D{% else %}white{% endif %};">
+                                {{ performance.trend|default('N/A') }}
+                            </span>
+                            <span style="font-size: 0.55rem; text-transform: uppercase; letter-spacing: 0.05em; color: rgba(255,255,255,0.6);">Trend</span>
+                        </div>
+                    </div>
+
+                    {% if athlete.achievements %}
+                    <!-- Achievements Section -->
+                    <div class="mb-4 text-start px-3">
+                        <span class="d-block mb-2" style="font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.1em; color: rgba(255,255,255,0.6); font-weight:700;">Top Achievements</span>
+                        <div class="d-flex flex-wrap gap-2">
+                            {% for achievement in athlete.achievements[:3] %}
+                            <span class="badge" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); font-size: 0.75rem; font-weight:500; border-radius:4px;">
+                                <i class="bi bi-trophy-fill" style="color:var(--accent);"></i> {{ achievement }}
+                            </span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+
                     <div class="d-inline-block p-3 bg-white" style="border-radius: var(--radius-lg); box-shadow: 0 10px 30px rgba(0,0,0,0.3); transition: transform 0.3s ease;">
                         <img src="data:image/png;base64,{{ qr_code }}" alt="QR Code" style="width: 220px; height: 220px; display:block;">
                     </div>
@@ -51,6 +87,46 @@
                         <div class="text-end">
                             <span class="d-block text-white fw-bold mb-1">ISSUED</span>
                             <span>{{ athlete.created_at[:10] }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Analytics Section -->
+            <div class="card mb-4 card-interactive" style="border-radius:var(--radius-lg);">
+                <div class="card-body p-4">
+                    <h5 class="fw-bold text-primary mb-4"><i class="bi bi-graph-up-arrow"></i> Performance Analytics</h5>
+                    
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small text-muted text-uppercase mb-3">Training Intensity</label>
+                            <div class="chart-container" style="height: 160px;">
+                                <canvas id="idTrainingChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small text-muted text-uppercase mb-3">Weight Trend</label>
+                            <div class="chart-container" style="height: 160px;">
+                                <canvas id="idWeightChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small text-muted text-uppercase mb-3">Calorie Intake</label>
+                            <div class="chart-container" style="height: 160px;">
+                                <canvas id="idCalorieChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small text-muted text-uppercase mb-3">Heart Rate Trend</label>
+                            <div class="chart-container" style="height: 160px;">
+                                <canvas id="idHeartRateChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-bold small text-muted text-uppercase mb-3">BMI Progress</label>
+                            <div class="chart-container" style="height: 160px;">
+                                <canvas id="idBmiChart"></canvas>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -86,6 +162,80 @@
 </div>
 
 <script>
+document.addEventListener('DOMContentLoaded', async function() {
+    const athleteId = "{{ athlete._id }}";
+    
+    try {
+        const data = await apiGet(`/api/athlete/${athleteId}/analytics`);
+        if (!data) return;
+
+        // Training Chart
+        if (data.training && data.training.dates.length > 0) {
+            makeLineChart('idTrainingChart', data.training.dates, [{
+                label: 'Intensity',
+                data: data.training.intensities,
+                borderColor: '#1E3A8A',
+                backgroundColor: 'rgba(30,58,138,0.05)',
+                borderWidth: 2,
+                tension: 0.4,
+                fill: true
+            }], 100);
+        }
+
+        // Weight Chart
+        if (data.health && data.health.weights.length > 0) {
+            makeLineChart('idWeightChart', data.health.dates, [{
+                label: 'Weight (kg)',
+                data: data.health.weights,
+                borderColor: '#0D1B4A',
+                backgroundColor: 'rgba(13,27,74,0.05)',
+                borderWidth: 2,
+                tension: 0.4,
+                fill: true
+            }]);
+        }
+
+        // Calorie Chart
+        if (data.diet && data.diet.calories.length > 0) {
+            makeBarChart('idCalorieChart', data.diet.dates, [{
+                label: 'Calories',
+                data: data.diet.calories,
+                backgroundColor: 'rgba(217,119,6,0.7)',
+                borderColor: '#D97706',
+                borderWidth: 1
+            }]);
+        }
+
+        // Heart Rate Chart
+        if (data.health && data.health.heart_rates.length > 0) {
+            makeLineChart('idHeartRateChart', data.health.dates, [{
+                label: 'BPM',
+                data: data.health.heart_rates,
+                borderColor: '#BA1A1A',
+                backgroundColor: 'rgba(186,26,26,0.05)',
+                borderWidth: 2,
+                tension: 0.4,
+                fill: true
+            }]);
+        }
+
+        // BMI Chart
+        if (data.health && data.health.bmis.length > 0) {
+            makeLineChart('idBmiChart', data.health.dates, [{
+                label: 'BMI',
+                data: data.health.bmis,
+                borderColor: '#0369A1',
+                backgroundColor: 'rgba(3,105,161,0.05)',
+                borderWidth: 2,
+                tension: 0.4,
+                fill: true
+            }]);
+        }
+    } catch (e) {
+        console.error('Error loading ID card charts:', e);
+    }
+});
+
 function copyProfileLink() {
     var copyText = document.getElementById("profileLinkInput");
     copyText.select();

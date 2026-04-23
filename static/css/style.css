@@ -798,6 +798,49 @@ hr { border: none; border-top: 1px solid rgba(197,197,211,0.15); opacity: 1; }
   .hero-section .lead { font-size: 1rem; }
 }
 
+/* ═══════════════════════════════════════════════════════════
+   VOICE COMMAND STYLES
+   ═══════════════════════════════════════════════════════════ */
+.voice-pulse {
+  width: 12px; height: 12px; border-radius: 50%;
+  background: #FFFFFF;
+  position: relative;
+}
+.voice-pulse.listening {
+  background: var(--accent);
+  box-shadow: 0 0 0 0 rgba(74,225,118,0.7);
+  animation: voicePulseAnim 1.5s infinite;
+}
+.voice-pulse.processing {
+  background: #F59E0B;
+  animation: voiceRotateAnim 1s infinite linear;
+}
+.voice-pulse.error { background: var(--error); }
+
+@keyframes voicePulseAnim {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(74,225,118,0.7); }
+  70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(74,225,118,0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(74,225,118,0); }
+}
+
+@keyframes voiceRotateAnim {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.btn-pulse-active {
+  animation: btnPulseGlow 1.5s infinite !important;
+  background: var(--accent) !important;
+  color: var(--on-tertiary-fixed) !important;
+  border-color: transparent !important;
+}
+
+@keyframes btnPulseGlow {
+  0% { box-shadow: 0 0 0 0 rgba(74,225,118,0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(74,225,118,0); }
+  100% { box-shadow: 0 0 0 0 rgba(74,225,118,0); }
+}
+
 @media print {
   .navbar, footer, .btn, .action-bar { display: none !important; }
   body { background: white; }

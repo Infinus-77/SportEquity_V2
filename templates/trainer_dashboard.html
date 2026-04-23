@@ -20,7 +20,12 @@
       <h1 style="font-size:1.9rem;"><i class="bi bi-person-gear" style="color:var(--primary-container);"></i> {{ trainer.full_name }}</h1>
       <div class="subtitle">{{ trainer.specialization or 'Athletic Trainer' }}</div>
     </div>
-    <span class="badge bg-primary" style="font-size:0.85rem;padding:0.5em 1em;">{{ trainer.full_name }}</span>
+    <div class="d-flex gap-2 align-items-center">
+        <span class="badge bg-primary" style="font-size:0.85rem;padding:0.5em 1em;">{{ trainer.full_name }}</span>
+        <button class="btn btn-outline-primary btn-sm shadow-sm fw-bold" data-bs-toggle="modal" data-bs-target="#editTrainerProfileModal" style="border-radius: var(--radius-md);">
+            <i class="bi bi-pencil-square"></i> Edit Profile
+        </button>
+    </div>
   </div>
 
   <!-- ── Stats (Enhanced) ───────────────────────────────── -->
@@ -156,5 +161,42 @@
       <div class="modal-footer"><button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button><button type="submit" class="btn btn-primary">Create Tournament</button></div>
     </form>
   </div></div>
+</div>
+ 
+<!-- Edit Profile Modal -->
+<div class="modal fade" id="editTrainerProfileModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content" style="border-radius: var(--radius-lg); overflow: hidden; border: none; box-shadow: var(--shadow-xl);">
+            <div class="modal-header bg-light border-bottom-0 p-4">
+                <h5 class="modal-title fw-bold"><i class="bi bi-pencil-square text-primary"></i> Edit Professional Profile</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('update_generic_profile') }}">
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted text-uppercase">Full Name</label>
+                        <input type="text" name="full_name" class="form-control" value="{{ trainer.full_name }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted text-uppercase">Specialization</label>
+                        <input type="text" name="specialization" class="form-control" value="{{ trainer.specialization or '' }}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted text-uppercase">Mobile Number</label>
+                        <input type="tel" name="mobile" class="form-control" value="{{ trainer.mobile or '' }}" placeholder="+91 98765 43210">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-muted text-uppercase">Email ID</label>
+                        <input type="email" class="form-control" value="{{ trainer.email }}" readonly disabled>
+                        <small class="text-muted">Email cannot be changed.</small>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-top-0 p-4 pt-2">
+                    <button type="button" class="btn btn-secondary px-4 fw-bold" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary px-4 fw-bold shadow-sm">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
 {% endblock %}

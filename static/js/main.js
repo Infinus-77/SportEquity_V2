@@ -43,7 +43,93 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // ── Intersection Observer for scroll animations ──
     initScrollAnimations();
+
+    // ── Voice Commands ──
+    initVoiceCommands();
 });
+
+// ─── Voice Commands ──────────────────────────────────────────────────────────
+function initVoiceCommands() {
+    const btn = document.getElementById('voiceCommandBtn');
+    const toast = document.getElementById('voiceStatusToast');
+    const statusText = document.getElementById('voiceStatusText');
+    const indicator = document.getElementById('voiceIndicator');
+    
+    if (!btn || !window.webkitSpeechRecognition) return;
+
+    const recognition = new webkitSpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
+
+    let bsToast = null;
+    if (toast) bsToast = new bootstrap.Toast(toast, { autohide: false });
+
+    btn.addEventListener('click', () => {
+        try {
+            recognition.start();
+            btn.classList.add('btn-pulse-active');
+            statusText.textContent = 'Listening for commands...';
+            indicator.className = 'voice-pulse listening';
+            if (bsToast) bsToast.show();
+        } catch (e) {
+            console.error('Speech recognition already started');
+        }
+    });
+
+    recognition.onresult = (event) => {
+        const command = event.results[0][0].transcript.toLowerCase();
+        console.log('Voice Command:', command);
+        statusText.textContent = `Processing: "${command}"`;
+        indicator.className = 'voice-pulse processing';
+
+        setTimeout(() => {
+            handleCommand(command);
+            if (bsToast) bsToast.hide();
+            btn.classList.remove('btn-pulse-active');
+        }, 1000);
+    };
+
+    recognition.onerror = (event) => {
+        statusText.textContent = 'Error recognizing speech.';
+        indicator.className = 'voice-pulse error';
+        setTimeout(() => {
+            if (bsToast) bsToast.hide();
+            btn.classList.remove('btn-pulse-active');
+        }, 2000);
+    };
+
+    recognition.onend = () => {
+        btn.classList.remove('btn-pulse-active');
+    };
+
+    function handleCommand(cmd) {
+        if (cmd.includes('dashboard')) {
+            window.location.href = '/dashboard';
+        } else if (cmd.includes('training')) {
+            window.location.href = '/athlete/training/log';
+        } else if (cmd.includes('health')) {
+            window.location.href = '/athlete/health/log';
+        } else if (cmd.includes('diet') || cmd.includes('nutrition')) {
+            window.location.href = '/athlete/diet/log';
+        } else if (cmd.includes('id card') || cmd.includes('identity')) {
+            window.location.href = '/athlete/id-card';
+        } else if (cmd.includes('profile')) {
+            window.location.href = '/athlete/profile';
+        } else if (cmd.includes('chat') || cmd.includes('coach') || cmd.includes('ai')) {
+            window.location.href = '/athlete/chatbot';
+        } else if (cmd.includes('appointment')) {
+            window.location.href = '/appointments';
+        } else if (cmd.includes('tournament')) {
+            window.location.href = '/tournaments';
+        } else if (cmd.includes('emergency') || cmd.includes('help') || cmd.includes('alert')) {
+            const emergencyModal = new bootstrap.Modal(document.getElementById('emergencyModal'));
+            if (emergencyModal) emergencyModal.show();
+        } else {
+            alert('Command not recognized: ' + cmd);
+        }
+    }
+}
 
 // ─── Sidebar Toggle ──────────────────────────────────────────────────────────
 function initSidebar() {

@@ -30,44 +30,49 @@
 
     <!-- ── Quick Stats (Enhanced) ────────────────────────── -->
     <div class="row g-3 mb-4 stagger-fade">
-        <div class="col-6 col-md-3">
+        <div class="col-6 col-md-4 col-lg">
             <div class="stat-card-enhanced card-ripple">
                 <div class="stat-icon" style="background:rgba(0,75,30,0.1);color:var(--tertiary-container);">
                     <i class="bi bi-activity"></i>
                 </div>
                 <div class="stat-number text-success">{{ training_logs|length }}</div>
-                <div class="stat-label">Training Sessions</div>
+                <div class="stat-label">Training</div>
             </div>
         </div>
-        <div class="col-6 col-md-3">
+        <div class="col-6 col-md-4 col-lg">
             <div class="stat-card-enhanced card-ripple">
                 <div class="stat-icon" style="background:rgba(3,105,161,0.1);color:#0369A1;">
                     <i class="bi bi-heart-pulse"></i>
                 </div>
                 <div class="stat-number text-info">{{ health_records|length }}</div>
-                <div class="stat-label">Health Records</div>
+                <div class="stat-label">Health</div>
             </div>
         </div>
-        <div class="col-6 col-md-3">
+        <div class="col-6 col-md-4 col-lg">
             <div class="stat-card-enhanced card-ripple">
                 <div class="stat-icon" style="background:rgba(217,119,6,0.1);color:#D97706;">
                     <i class="bi bi-cup-hot"></i>
                 </div>
                 <div class="stat-number text-warning">{{ diet_logs|length }}</div>
-                <div class="stat-label">Diet Logs</div>
+                <div class="stat-label">Diet</div>
             </div>
         </div>
-        <div class="col-6 col-md-3">
+        <div class="col-6 col-md-4 col-lg">
+            <div class="stat-card-enhanced card-ripple">
+                <div class="stat-icon" style="background:rgba(74,225,118,0.1);color:var(--accent);">
+                    <i class="bi bi-trophy"></i>
+                </div>
+                <div class="stat-number" style="color:var(--accent);">{{ athlete.achievements|length }}</div>
+                <div class="stat-label">Achievements</div>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 col-lg">
             <div class="stat-card-enhanced card-ripple">
                 <div class="stat-icon" style="background:rgba(186,26,26,0.1);color:var(--error);">
                     <i class="bi bi-graph-up-arrow"></i>
                 </div>
                 <div class="stat-number text-danger">{{ performance.improvement }}</div>
-                <div class="stat-label">Performance
-                    <span class="badge {% if performance.trend == 'Improving' %}bg-success{% elif performance.trend == 'Declining' %}bg-danger{% else %}bg-secondary{% endif %}">
-                        {{ performance.trend }}
-                    </span>
-                </div>
+                <div class="stat-label">Performance</div>
             </div>
         </div>
     </div>
@@ -87,6 +92,36 @@
             <i class="bi bi-calendar-event"></i> Book Appointment
         </a>
     </div>
+
+    <!-- ── Active Diet Plan Card ────────────────────────── -->
+    {% if athlete.active_diet_plan %}
+    <div class="row g-3 mb-4 stagger-fade">
+        <div class="col-12">
+            <div class="card card-interactive border-warning" style="background:rgba(217,119,6,0.03); border-width: 2px;">
+                <div class="card-body p-4 d-flex align-items-center justify-content-between flex-wrap gap-4">
+                    <div class="d-flex align-items-center gap-4">
+                        <div class="stat-icon" style="background:var(--warning); color:white; width:60px; height:60px; font-size:1.8rem;">
+                            <i class="bi bi-egg-fried"></i>
+                        </div>
+                        <div>
+                            <h5 class="mb-1 fw-bold text-dark">Your Active Diet Plan</h5>
+                            <p class="mb-0 text-muted"><strong>Meal:</strong> {{ athlete.active_diet_plan.meal }} | <strong>Calories:</strong> {{ athlete.active_diet_plan.calories }} kcal</p>
+                            <small class="text-muted"><i class="bi bi-stars"></i> Did you follow this plan today?</small>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-warning fw-bold px-4 rounded-pill shadow-sm" onclick="confirmDietPlan()">
+                            <i class="bi bi-check-circle-fill"></i> Yes, Log for Analytics
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm px-3 rounded-pill" onclick="clearDietPlan()">
+                            <i class="bi bi-x-circle"></i> Not Today
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 
     <!-- ── Image Cards Row ─────────────────────────────────── -->
     <div class="row g-3 mb-4">
@@ -306,6 +341,24 @@ const CHART_COLORS = {
   amber:   '#D97706', rust:   '#BA1A1A',
   sky:     '#0369A1', cream:  'rgba(30,58,138,0.08)'
 };
+
+async function confirmDietPlan() {
+    try {
+        const res = await apiPost("{{ url_for('api_confirm_diet_plan') }}", {});
+        if (res.success) {
+            location.reload();
+        }
+    } catch (e) { alert("Error confirming plan"); }
+}
+
+async function clearDietPlan() {
+    if(confirm("Are you sure you want to dismiss today's plan?")) {
+        try {
+            await apiPost("/api/diet/clear-plan", {});
+            location.reload();
+        } catch (e) { alert("Error clearing plan"); }
+    }
+}
 
 async function loadAnalytics() {
     const athleteId = "{{ athlete._id }}";
