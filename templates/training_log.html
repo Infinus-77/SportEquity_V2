@@ -1,5 +1,13 @@
 {% extends "base.html" %}
 {% block title %}Log Training - SportEquity{% endblock %}
+{% block extra_css %}
+<style>
+  .record-card { transition: all 0.2s ease; border-left: 4px solid var(--primary); }
+  .record-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-card); }
+  .intensity-bar { height: 6px; border-radius: 3px; background: #e9ecef; overflow: hidden; }
+  .intensity-fill { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
+</style>
+{% endblock %}
 {% block content %}
 <div class="container-fluid px-4 py-4">
   <div class="row justify-content-center stagger-fade">
@@ -25,14 +33,12 @@
                 <label class="form-label fw-bold text-muted" style="font-size:0.85rem;text-transform:uppercase;">Workout Type <span class="text-danger">*</span></label>
                 <select class="form-select form-select-lg bg-light" name="workout_type" required>
                   <option value="">Select type...</option>
-                  <option>Cardio</option>
-                  <option>Strength Training</option>
-                  <option>Flexibility / Stretching</option>
-                  <option>Sport Practice</option>
-                  <option>Sprint / Speed Work</option>
-                  <option>Agility Drills</option>
-                  <option>Competition</option>
-                  <option>Recovery / Cool Down</option>
+                  <option>Cardio</option><option>Strength Training</option><option>Flexibility / Stretching</option>
+                  <option>Sport Practice</option><option>Sprint / Speed Work</option><option>Agility Drills</option>
+                  <option>Competition</option><option>Recovery / Cool Down</option>
+                  <option>Running</option><option>Swimming</option><option>Cycling</option><option>Yoga</option>
+                  <option>Football</option><option>Cricket</option><option>Basketball</option><option>Tennis</option>
+                  <option>Gym Workout</option><option>General Training</option>
                 </select>
               </div>
             </div>
@@ -76,5 +82,86 @@
       </div>
     </div>
   </div>
+
+  <!-- ── Training Records History ──────────────── -->
+  {% if records %}
+  <div class="row justify-content-center mt-5">
+    <div class="col-md-9 col-lg-7">
+      <h4 class="fw-bold mb-3"><i class="bi bi-clock-history text-primary"></i> Training History <span class="badge bg-primary">{{ records|length }}</span></h4>
+      {% for r in records %}
+      <div class="card record-card mb-3 border-0 shadow-sm" style="border-radius:var(--radius-md);">
+        <div class="card-body py-3 px-4">
+          <div class="d-flex justify-content-between align-items-start">
+            <div class="flex-grow-1">
+              <div class="d-flex align-items-center gap-2 mb-1">
+                <strong>{{ r.workout_type or 'Training' }}</strong>
+                <span class="badge bg-primary bg-opacity-10 text-primary">{{ r.duration or 0 }} min</span>
+              </div>
+              <div class="d-flex align-items-center gap-3 mb-2">
+                <small class="text-muted"><i class="bi bi-calendar3"></i> {{ r.date or 'N/A' }}</small>
+                <small class="text-muted"><i class="bi bi-speedometer2"></i> Intensity: {{ r.intensity or 0 }}/100</small>
+              </div>
+              <div class="intensity-bar" style="width:150px;">
+                <div class="intensity-fill {% if (r.intensity or 0) > 70 %}bg-danger{% elif (r.intensity or 0) > 40 %}bg-warning{% else %}bg-success{% endif %}" style="width:{{ r.intensity or 0 }}%;"></div>
+              </div>
+              {% if r.notes %}<small class="text-muted d-block mt-1"><i class="bi bi-chat-text"></i> {{ r.notes[:80] }}</small>{% endif %}
+            </div>
+            <div class="d-flex gap-1">
+              <button class="btn btn-sm btn-outline-info" title="Edit" onclick="openEditTraining('{{ r._id }}', '{{ r.date }}', '{{ r.workout_type }}', '{{ r.duration }}', '{{ r.intensity }}', `{{ r.notes or '' }}`)"><i class="bi bi-pencil"></i></button>
+              <form method="POST" action="{{ url_for('delete_record', collection='training', record_id=r._id) }}" onsubmit="return confirm('Delete this record?')">
+                <button class="btn btn-sm btn-outline-danger" title="Delete"><i class="bi bi-trash"></i></button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
 </div>
+
+<!-- Edit Training Modal -->
+<div class="modal fade" id="editTrainingModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content" style="border-radius:var(--radius-lg);overflow:hidden;">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title"><i class="bi bi-pencil-square"></i> Edit Training Record</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" id="editTrainingForm">
+        <div class="modal-body">
+          <div class="mb-3"><label class="form-label fw-bold">Date</label><input type="date" class="form-control" name="date" id="etDate" required></div>
+          <div class="mb-3"><label class="form-label fw-bold">Workout Type</label><input type="text" class="form-control" name="workout_type" id="etType" required></div>
+          <div class="row mb-3">
+            <div class="col-6"><label class="form-label fw-bold">Duration (min)</label><input type="number" class="form-control" name="duration" id="etDuration" min="1" required></div>
+            <div class="col-6"><label class="form-label fw-bold">Intensity</label><input type="number" class="form-control" name="intensity" id="etIntensity" min="0" max="100"></div>
+          </div>
+          <div class="mb-3"><label class="form-label fw-bold">Notes</label><textarea class="form-control" name="notes" id="etNotes" rows="2"></textarea></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary fw-bold"><i class="bi bi-check-circle-fill"></i> Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('intensityRange')?.addEventListener('input', function() {
+  document.getElementById('intensityValue').textContent = this.value;
+});
+function openEditTraining(id, date, type, dur, inten, notes) {
+  document.getElementById('editTrainingForm').action = '/api/record/training/' + id + '/edit';
+  document.getElementById('etDate').value = date;
+  document.getElementById('etType').value = type;
+  document.getElementById('etDuration').value = dur;
+  document.getElementById('etIntensity').value = inten;
+  document.getElementById('etNotes').value = notes;
+  new bootstrap.Modal(document.getElementById('editTrainingModal')).show();
+}
+</script>
 {% endblock %}

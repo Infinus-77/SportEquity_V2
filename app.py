@@ -28,7 +28,8 @@ try:
     from groq import Groq
     groq_api_key = os.getenv('GROQ_API_KEY')
     groq_client = Groq(api_key=groq_api_key) if groq_api_key else None
-except ImportError:
+except Exception as e:
+    print(f"Groq init skipped: {e}")
     groq_client = None
 
 # ─── MongoDB ─────────────────────────────────────────────────────────────────
@@ -44,8 +45,8 @@ def connect_mongo():
             db = c['sportequity']
             print(f"Connected to MongoDB: {uri[:40]}...")
             return True
-        except:
-            pass
+        except Exception as e:
+            print(f"MongoDB connection failed ({uri[:40]}...): {e}")
     print("WARNING: MongoDB unavailable – using in-memory mock")
     return False
 
@@ -106,9 +107,12 @@ class MockCol:
             if '$set' in upd: doc.update(upd['$set'])
             if '$push' in upd:
                 for k, v in upd['$push'].items(): doc.setdefault(k, []).append(v)
+            if '$unset' in upd:
+                for k in upd['$unset']: doc.pop(k, None)
         elif upsert:
             nd = dict(q)
             if '$set' in upd: nd.update(upd['$set'])
+            if '$setOnInsert' in upd: nd.update(upd['$setOnInsert'])
             self.insert_one(nd)
 
     def delete_many(self, q):
@@ -252,16 +256,22 @@ def ai_chatbot_response(question, athlete_data=None, history=None):
             if athlete_data:
                 name = athlete_data.get('name', 'Athlete')
                 sport = athlete_data.get('sport', 'Unspecified')
+                age = athlete_data.get('age', 'N/A')
+                gender = athlete_data.get('gender', 'N/A')
+                bio = athlete_data.get('bio', '')
+                achievements = ", ".join(athlete_data.get('achievements', []))
                 h = athlete_data.get('health', {})
-                athlete_info = f"You are talking to {name}, who plays {sport}."
+                athlete_info = f"You are talking to {name} ({age}y/o {gender}), who plays {sport}. Bio: {bio}. Achievements: {achievements}."
                 if h:
-                    athlete_info += f" Recent stats: Weight {h.get('weight')}kg, BMI {h.get('bmi')}."
+                    athlete_info += f" Recent stats: Weight {h.get('weight')}kg, BMI {h.get('bmi')}, HR {h.get('heart_rate')}bpm, BP {h.get('blood_pressure')}."
 
             sys_p = (f"You are SportEquity AI – expert sports coach and nutritionist. {athlete_info} "
-                     "1. Ask clarifying questions if the user wants a diet plan. "
-                     "2. Provide structured, evidence-based advice using SIMPLE, AFFORDABLE, and LOCALLY AVAILABLE items (e.g., lentils, eggs, rice, seasonal fruits, local vegetables). "
-                     "3. Avoid expensive supplements or exotic foods; prioritize rural-friendly, low-cost nutrition. "
-                     "4. If you suggest a specific meal, ask if the user wants to log it and append: [AUTO_LOG:{\"meal\":\"Meal Name\", \"calories\":600, \"protein\":40, \"carbs\":60, \"fats\":15}] "
+                     "1. Ask clarifying questions if the user wants a diet plan or training log. "
+                     "2. Provide structured, evidence-based advice using SIMPLE, AFFORDABLE, and LOCALLY AVAILABLE items. "
+                     "3. Avoid expensive supplements; prioritize rural-friendly nutrition. "
+                     "4. If you suggest a specific meal, append: [AUTO_LOG:{\"meal\":\"Meal Name\", \"calories\":600, \"protein\":40, \"carbs\":60, \"fats\":15}] "
+                     "5. If you suggest or discuss a training session, append: [AUTO_LOG_TRAINING:{\"workout_type\":\"Workout Name\", \"duration\":45, \"intensity\":70}] "
+                     "6. If you provide a performance insight or goal, append: [AUTO_LOG_PERFORMANCE:{\"insight\":\"Insight text\", \"trend\":\"Improving\"}] "
                      "Keep responses concise.")
             
             messages = [{'role':'system','content':sys_p}]
@@ -280,14 +290,32 @@ def ai_chatbot_response(question, athlete_data=None, history=None):
     if any(w in q for w in ['diet','eat','food','protein','calorie','plan']):
         return ("For a simple and affordable diet, focus on local staples like Dal (lentils), eggs, rice, and seasonal fruits. "
                 "Aim for a balanced plate: 1/2 vegetables, 1/4 protein (like eggs or dal), and 1/4 carbs (like rice or roti). "
-                "Would you like me to create a specific plan for you? Also, don't forget to log your meals in the Diet Log!")
-    if any(w in q for w in ['train','workout','exercise']): 
-        return 'Combine 3x strength + 2x cardio per week. Always warm up 10 minutes before sessions and progressively increase intensity each week.'
+                "Here's a suggested plan you can save directly! "
+                '[AUTO_LOG:{"meal":"Balanced Indian Athlete Plate", "calories":2100, "protein":70, "carbs":250, "fats":55}]')
+    if any(w in q for w in ['train','workout','exercise']):
+        return ('Combine 3x strength + 2x cardio per week. Always warm up 10 minutes before sessions and progressively increase intensity each week. '
+                'Here\'s a suggested session for today: '
+                '[AUTO_LOG_TRAINING:{"workout_type":"Mixed Cardio & Strength", "duration":45, "intensity":65}]')
     if any(w in q for w in ['injur','pain','hurt']): 
         return 'For minor injuries: RICE (Rest, Ice, Compression, Elevation). If pain persists over 48 hours, consult your doctor immediately.'
     if any(w in q for w in ['sleep','rest','tired']): 
         return 'Athletes need 8–10 hours of quality sleep. Keep a consistent schedule and avoid screens 1 hour before bed for deep sleep.'
-    return "I'm SportEquity AI. Ask me about training, nutrition, injuries, or sleep recovery!"
+    if any(w in q for w in ['performance','progress','improve','trend','analyze','stats']):
+        return ('Based on your recent data, your performance is trending well. Consistency is key — keep logging your sessions! '
+                '[AUTO_LOG_PERFORMANCE:{"insight":"Consistent training pattern detected. Maintain current intensity.", "trend":"Improving"}]')
+    return "I'm SportEquity AI. Ask me about training, nutrition, injuries, performance analysis, or sleep recovery!"
+
+# ─── Session Validation ───────────────────────────────────────────────────────
+@app.before_request
+def validate_session():
+    """Prevent redirect loops when mock DB data is wiped on server restart."""
+    skip_endpoints = ('login', 'register', 'index', 'seed_demo_data', 'static', 'logout', None)
+    if 'user_id' in session and request.endpoint not in skip_endpoints:
+        user = get_col('users').find_one({'_id': oid(session['user_id'])})
+        if not user:
+            session.clear()
+            flash('Session expired. Please login again.', 'warning')
+            return redirect(url_for('login'))
 
 # ─── Auth ─────────────────────────────────────────────────────────────────────
 @app.route('/')
@@ -422,18 +450,31 @@ def admin_dashboard():
     user = get_col('users').find_one({'_id':oid(uid)})
     athletes    = list(get_col('athletes').find({}))
     tournaments = list(get_col('tournaments').find({}))
+    trainers    = list(get_col('users').find({'role':'trainer'}))
+    doctors     = list(get_col('users').find({'role':'doctor'}))
+    
+    verified_athletes   = [a for a in athletes if a.get('verified')]
+    unverified_athletes = [a for a in athletes if not a.get('verified')]
     
     stats = {
         'total_athletes': len(athletes),
-        'pending_athletes': sum(1 for a in athletes if not a.get('verified')),
-        'total_trainers': get_col('users').count_documents({'role': 'trainer'}),
-        'total_doctors': get_col('users').count_documents({'role': 'doctor'})
+        'pending_athletes': len(unverified_athletes),
+        'total_trainers': len(trainers),
+        'total_doctors': len(doctors)
     }
+    
+    # Gather per-athlete stats for the table
+    for a in athletes:
+        aid = a['_id']
+        a['training_count'] = get_col('training_logs').count_documents({'athlete_id': aid})
+        a['health_count']   = get_col('health_records').count_documents({'athlete_id': aid})
+        a['diet_count']     = get_col('diet_logs').count_documents({'athlete_id': aid})
     
     return render_template('admin_dashboard.html',
         admin=user, athletes=athletes, tournaments=tournaments, stats=stats,
-        verified_count=sum(1 for a in athletes if a.get('verified')),
-        pending_count=stats['pending_athletes'],
+        verified_athletes=verified_athletes, unverified_athletes=unverified_athletes,
+        verified_count=len(verified_athletes), pending_count=len(unverified_athletes),
+        trainers=trainers, doctors=doctors,
         users_count=len(athletes), admin_region=user.get('region',''))
 
 @app.route('/admin/statistics')
@@ -562,7 +603,7 @@ def trainer_create_tournament():
 @app.route('/athlete/profile')
 @login_required
 def athlete_profile():
-    athlete = get_col('athletes').find_one({'user_id':oid(session['user_id'])}) or {}
+    athlete = get_col('athletes').find_one({'user_id':oid(session['user_id'])})
     if athlete:
         aid = athlete['_id']
         t = sorted(list(get_col('training_logs').find({'athlete_id':aid})), key=lambda x:x.get('date',''), reverse=True)
@@ -571,7 +612,21 @@ def athlete_profile():
         return render_template('athlete_profile.html', athlete=athlete, 
             sport_score=calculate_sport_score(aid), performance=analyze_performance(aid),
             training_logs=t[:10], health_records=h[:12], diet_logs=d[:30])
-    return render_template('athlete_profile.html', athlete=athlete)
+    
+    # If athlete doc missing but role is athlete, create a dummy or redirect
+    default_athlete = {
+        'name': session.get('full_name', 'Athlete'),
+        'email': session.get('user_id'),
+        'region': 'Unknown',
+        'age': 0,
+        'gender': 'Not specified',
+        'sport': 'Not specified',
+        'bio': '',
+        'achievements': [],
+        'verified': False,
+        'visibility': 'private'
+    }
+    return render_template('athlete_profile.html', athlete=default_athlete)
 
 @app.route('/athlete/profile/update', methods=['POST'])
 @login_required
@@ -583,7 +638,9 @@ def update_athlete_profile():
                  'region':data.get('region'),'mobile':data.get('mobile'),
                  'bio':data.get('bio'),
                  'achievements':[a.strip() for a in data.get('achievements','').split('\n') if a.strip()],
-                 'visibility':data.get('visibility','private'),'updated_at':datetime.now().isoformat()}})
+                 'visibility':data.get('visibility','private'),'updated_at':datetime.now().isoformat()},
+         '$setOnInsert': {'created_at': datetime.now().isoformat(), 'verified': False, 'sport_score': 0}},
+        upsert=True)
     flash('Profile updated!','success')
     return redirect(url_for('athlete_dashboard'))
  
@@ -662,8 +719,9 @@ def log_training():
             'duration':int(data.get('duration',0) or 0),'intensity':int(data.get('intensity',50) or 50),
             'notes':data.get('notes',''),'created_at':datetime.now().isoformat()})
         flash('Training session logged!','success')
-        return redirect(url_for('athlete_dashboard'))
-    return render_template('training_log.html', athlete=athlete)
+        return redirect(url_for('log_training'))
+    records = sorted(list(get_col('training_logs').find({'athlete_id':athlete['_id']})),key=lambda x:x.get('date',''),reverse=True)
+    return render_template('training_log.html', athlete=athlete, records=records, now=datetime.now().strftime('%Y-%m-%d'))
 
 @app.route('/athlete/health/log', methods=['GET','POST'])
 @login_required
@@ -679,8 +737,9 @@ def log_health():
             'sleep_hours':float(data.get('sleep_hours',7) or 7),'injury_notes':data.get('injury_notes',''),
             'created_at':datetime.now().isoformat()})
         flash('Health record saved!','success')
-        return redirect(url_for('athlete_dashboard'))
-    return render_template('health_log.html', athlete=athlete)
+        return redirect(url_for('log_health'))
+    records = sorted(list(get_col('health_records').find({'athlete_id':athlete['_id']})),key=lambda x:x.get('date',''),reverse=True)
+    return render_template('health_log.html', athlete=athlete, records=records, now=datetime.now().strftime('%Y-%m-%d'))
 
 @app.route('/athlete/diet/log', methods=['GET','POST'])
 @login_required
@@ -697,8 +756,60 @@ def log_diet():
             'water_intake':int(data.get('water_intake',0) or 0),'notes':data.get('notes',''),
             'created_at':datetime.now().isoformat()})
         flash('Diet logged!','success')
-        return redirect(url_for('athlete_dashboard'))
-    return render_template('diet_log.html', athlete=athlete)
+        return redirect(url_for('log_diet'))
+    records = sorted(list(get_col('diet_logs').find({'athlete_id':athlete['_id']})),key=lambda x:x.get('date',''),reverse=True)
+    return render_template('diet_log.html', athlete=athlete, records=records, now=datetime.now().strftime('%Y-%m-%d'))
+
+# ─── Record Edit/Delete ───────────────────────────────────────────────────────
+@app.route('/api/record/<collection>/<record_id>/delete', methods=['POST'])
+@login_required
+def delete_record(collection, record_id):
+    """Delete a training_log, health_record, or diet_log."""
+    col_map = {'training':'training_logs','health':'health_records','diet':'diet_logs'}
+    col_name = col_map.get(collection)
+    if not col_name: return jsonify({'error':'Invalid collection'}), 400
+    athlete = get_col('athletes').find_one({'user_id':oid(session['user_id'])})
+    if not athlete: return jsonify({'error':'No profile'}), 404
+    rec = get_col(col_name).find_one({'_id':oid(record_id)})
+    if not rec or str(rec.get('athlete_id')) != str(athlete['_id']):
+        return jsonify({'error':'Not found or not yours'}), 403
+    get_col(col_name).delete_many({'_id':oid(record_id)})
+    flash('Record deleted.','success')
+    redirect_map = {'training':'log_training','health':'log_health','diet':'log_diet'}
+    return redirect(url_for(redirect_map[collection]))
+
+@app.route('/api/record/<collection>/<record_id>/edit', methods=['POST'])
+@login_required
+def edit_record(collection, record_id):
+    """Edit a training_log, health_record, or diet_log."""
+    col_map = {'training':'training_logs','health':'health_records','diet':'diet_logs'}
+    col_name = col_map.get(collection)
+    if not col_name: return jsonify({'error':'Invalid collection'}), 400
+    athlete = get_col('athletes').find_one({'user_id':oid(session['user_id'])})
+    if not athlete: return jsonify({'error':'No profile'}), 404
+    rec = get_col(col_name).find_one({'_id':oid(record_id)})
+    if not rec or str(rec.get('athlete_id')) != str(athlete['_id']):
+        return jsonify({'error':'Not found or not yours'}), 403
+    data = request.form
+    update_fields = {}
+    for key in data:
+        if key != '_id':
+            val = data[key]
+            if key in ('duration','intensity','calories','protein','carbs','fats','water_intake','heart_rate','amount_g'):
+                try: val = int(val or 0)
+                except: val = 0
+            elif key in ('height','weight','sleep_hours','bmi'):
+                try: val = float(val or 0)
+                except: val = 0.0
+            update_fields[key] = val
+    if 'height' in update_fields and 'weight' in update_fields:
+        h = update_fields['height'] or 170; w = update_fields['weight'] or 65
+        update_fields['bmi'] = round(w/(h/100)**2, 1)
+    update_fields['updated_at'] = datetime.now().isoformat()
+    get_col(col_name).update_one({'_id':oid(record_id)}, {'$set': update_fields})
+    flash('Record updated!','success')
+    redirect_map = {'training':'log_training','health':'log_health','diet':'log_diet'}
+    return redirect(url_for(redirect_map[collection]))
 
 
 
@@ -724,6 +835,46 @@ def api_auto_log_diet():
         }}}
     )
     return jsonify({'success':True})
+
+@app.route('/api/training/auto-log', methods=['POST'])
+@login_required
+def api_auto_log_training():
+    """Saves a suggested training session from the chatbot."""
+    uid = session.get('user_id')
+    athlete = get_col('athletes').find_one({'user_id':oid(uid)})
+    if not athlete: return jsonify({'error':'No athlete profile'}), 404
+    data = request.json
+    
+    get_col('training_logs').insert_one({
+        'athlete_id': athlete['_id'],
+        'user_id': oid(uid),
+        'date': datetime.now().strftime('%Y-%m-%d'),
+        'workout_type': data.get('workout_type', 'General Training'),
+        'duration': int(data.get('duration', 30)),
+        'intensity': int(data.get('intensity', 50)),
+        'notes': 'Suggested by AI Coach',
+        'created_at': datetime.now().isoformat()
+    })
+    return jsonify({'success':True})
+
+@app.route('/api/performance/auto-log', methods=['POST'])
+@login_required
+def api_auto_log_performance():
+    """Saves a performance insight to a dedicated collection (NOT achievements)."""
+    uid = session.get('user_id')
+    athlete = get_col('athletes').find_one({'user_id':oid(uid)})
+    if not athlete: return jsonify({'error':'No athlete profile'}), 404
+    data = request.json
+    insight = data.get('insight', '')
+    trend   = data.get('trend', '')
+    if insight:
+        get_col('ai_chats').insert_one({
+            'athlete_id': athlete['_id'], 'type': 'performance_insight',
+            'insight': insight, 'trend': trend,
+            'created_at': datetime.now().isoformat()
+        })
+    return jsonify({'success':True})
+
 
 @app.route('/api/diet/confirm-plan', methods=['POST'])
 @login_required
@@ -829,19 +980,14 @@ def update_appointment(appointment_id):
 def appointment_letter(appointment_id):
     appt = get_col('appointments').find_one({'_id': oid(appointment_id)})
     if not appt: return "Appointment not found", 404
-    
-    # Check authorization (only athlete or the provider can see)
     athlete = get_col('athletes').find_one({'_id': appt['athlete_id']})
     if not athlete: return "Athlete not found", 404
-    
     provider_id = appt.get('trainer_id') or appt.get('doctor_id')
     provider = get_col('users').find_one({'_id': oid(provider_id)})
-    
-    return render_template('appointment_letter.html', 
-                         appointment=appt, 
-                         athlete=athlete, 
-                         provider=provider,
+    return render_template('appointment_letter.html',
+                         appointment=appt, athlete=athlete, provider=provider,
                          today=datetime.now().strftime('%Y-%m-%d'))
+
 @app.route('/appointments', methods=['GET','POST'])
 @login_required
 def appointments():
@@ -853,11 +999,9 @@ def appointments():
         data  = request.form
         expert_type = data.get('expert_type','')
         atype = expert_type or data.get('type','')
-        # Form sends expert_id_doctor / expert_id_trainer; fall back to trainer_id / doctor_id
         tr_id = (data.get('expert_id_trainer','') or data.get('trainer_id','')).strip()
         dr_id = (data.get('expert_id_doctor','') or data.get('doctor_id','')).strip()
 
-        # Resolve athlete _id
         if role == 'athlete':
             ath = get_col('athletes').find_one({'user_id':oid(uid)})
             ath_id = ath['_id'] if ath else oid(uid)
@@ -868,7 +1012,6 @@ def appointments():
                'appointment_date':data.get('appointment_date',''),
                'time':data.get('time',''),'notes':data.get('notes',''),
                'status':'pending','created_at':datetime.now().isoformat()}
-        # Store as string IDs so query `{'trainer_id': uid}` works
         if tr_id: doc['trainer_id'] = tr_id
         if dr_id: doc['doctor_id']  = dr_id
 
@@ -876,7 +1019,6 @@ def appointments():
         flash('Appointment booked!','success')
         return redirect(url_for('appointments'))
 
-    # GET
     if role == 'athlete':
         ath = get_col('athletes').find_one({'user_id':oid(uid)})
         appts = list(get_col('appointments').find({'athlete_id':ath['_id']})) if ath else []
@@ -890,7 +1032,6 @@ def appointments():
     for a in appts:
         ath = get_col('athletes').find_one({'_id':a.get('athlete_id')})
         a['athlete_name'] = ath.get('name','Unknown') if ath else 'Unknown'
-        # Lookup professional names
         if a.get('trainer_id'):
             tr = get_col('users').find_one({'_id':oid(a['trainer_id'])})
             a['trainer_name'] = tr.get('full_name','') if tr else ''
@@ -908,36 +1049,174 @@ def appointments():
 @app.route('/athlete/chatbot', methods=['GET','POST'])
 @login_required
 def chatbot():
+    import re
+    import json as _json
+
     athlete = get_col('athletes').find_one({'user_id':oid(session['user_id'])})
-    if not athlete: return redirect(url_for('athlete_profile'))
+    if not athlete:
+        if request.method == 'POST':
+            return jsonify({'response': 'Please complete your athlete profile first!', 'bot': 'SportEquity AI'})
+        return redirect(url_for('athlete_profile'))
+
     if request.method == 'POST':
-        q = (request.json or {}).get('question','').strip()
-        if not q: return jsonify({'error':'No question'})
-        
-        # Get context: last health record
-        h_recs = sorted(list(get_col('health_records').find({'athlete_id': athlete['_id']})), 
-                        key=lambda x: x.get('date', ''), reverse=True)
-        h_rec = h_recs[0] if h_recs else {}
-        
-        ath_data = {
-            'name': athlete.get('name'),
-            'sport': athlete.get('sport'),
-            'health': h_rec
-        }
+        try:
+            q = (request.json or {}).get('question','').strip()
+            if not q:
+                return jsonify({'error':'No question'})
 
-        # Get history: last 5 chats
-        history_docs = sorted(list(get_col('ai_chats').find({'athlete_id': athlete['_id']})), 
-                             key=lambda x: x.get('created_at', ''), reverse=True)[:5]
-        history = []
-        for h in reversed(history_docs):
-            history.append({'role': 'user', 'content': h['question']})
-            history.append({'role': 'assistant', 'content': h['response']})
+            ql = q.lower()
+            aid = athlete['_id']
+            uid = oid(session['user_id'])
+            today = datetime.now().strftime('%Y-%m-%d')
+            logged_items = []
 
-        resp = ai_chatbot_response(q, athlete_data=ath_data, history=history)
-        get_col('ai_chats').insert_one({'athlete_id':athlete['_id'],'question':q,'response':resp,'created_at':datetime.now().isoformat()})
-        return jsonify({'response':resp,'bot':'SportEquity AI'})
-    chats = sorted(list(get_col('ai_chats').find({'athlete_id':athlete['_id']})),key=lambda x:x.get('created_at',''),reverse=True)
-    return render_template('chatbot.html', athlete=athlete, chat_history=chats[:20])
+            # ── Training detection ──
+            if any(w in ql for w in ['log training', 'log workout', 'log exercise', 'i trained', 'i ran', 'i did', 'worked out', 'just finished']):
+                dur_match = re.search(r'(\d+)\s*(?:min|minute|mins|minutes|hr|hour|hours)', ql)
+                duration = int(dur_match.group(1)) if dur_match else 30
+                inten_match = re.search(r'(?:intensity|level)\s*(\d+)', ql)
+                if inten_match:
+                    intensity = min(100, int(inten_match.group(1)))
+                elif any(w in ql for w in ['high', 'intense', 'hard']): intensity = 80
+                elif any(w in ql for w in ['moderate', 'medium']): intensity = 60
+                elif any(w in ql for w in ['low', 'light', 'easy']): intensity = 40
+                else: intensity = 60
+                workout_types = {'running':'Running','run':'Running','jog':'Jogging','sprint':'Sprinting',
+                    'swim':'Swimming','cycling':'Cycling','bike':'Cycling','yoga':'Yoga',
+                    'strength':'Strength Training','weight':'Weight Training','cardio':'Cardio',
+                    'stretch':'Stretching','walk':'Walking','football':'Football',
+                    'cricket':'Cricket','basketball':'Basketball','tennis':'Tennis',
+                    'badminton':'Badminton','gym':'Gym Workout'}
+                workout_type = 'General Training'
+                for key, val in workout_types.items():
+                    if key in ql:
+                        workout_type = val
+                        break
+                get_col('training_logs').insert_one({
+                    'athlete_id': aid, 'user_id': uid, 'date': today,
+                    'workout_type': workout_type, 'duration': duration,
+                    'intensity': intensity, 'notes': f'Logged via AI Coach: {q}',
+                    'created_at': datetime.now().isoformat()
+                })
+                logged_items.append(f"**Training Logged!** ✅\n• Type: {workout_type}\n• Duration: {duration} min\n• Intensity: {intensity}/100")
+
+            # ── Diet detection ──
+            if any(w in ql for w in ['log diet','log meal','log food','log my diet','log my meal','i ate','i had','for lunch','for breakfast','for dinner','for snack']):
+                meal_desc = ql
+                for prefix in ['log my diet','log my meal','log my food','log diet','log meal','log food']:
+                    if prefix in meal_desc:
+                        meal_desc = meal_desc[meal_desc.index(prefix)+len(prefix):]
+                        break
+                for prefix in ['i ate','i had','i have eaten','i just ate','i just had']:
+                    if prefix in meal_desc:
+                        meal_desc = meal_desc[meal_desc.index(prefix)+len(prefix):]
+                        break
+                meal_type = 'Meal'
+                for mt_phrase, mt_label in [('breakfast','Breakfast'),('lunch','Lunch'),('dinner','Dinner'),('snack','Snack')]:
+                    if mt_phrase in meal_desc:
+                        meal_type = mt_label
+                        break
+                for phrase in ['for lunch','for breakfast','for dinner','for snack','at lunch','at breakfast','at dinner','today','yesterday','this morning','tonight','please','can you','could you']:
+                    meal_desc = meal_desc.replace(phrase, ' ')
+                meal_desc = re.sub(r'[.!?,;:]+', '', meal_desc).strip()
+                meal_desc = re.sub(r'\s+', ' ', meal_desc).strip()
+                meal_desc = meal_desc.title() if meal_desc else 'Meal'
+
+                calories, protein, carbs, fats = 0, 0, 0, 0
+                ai_estimated = False
+                if groq_client and meal_desc and meal_desc != 'Meal':
+                    try:
+                        nutrition_prompt = f'Estimate the nutritional content of this meal: "{meal_desc}". Return ONLY a JSON object: {{"food":"clean food name","calories":number,"protein":number,"carbs":number,"fats":number}}'
+                        ai_resp = groq_client.chat.completions.create(model='llama-3.3-70b-versatile', max_tokens=100, messages=[{'role':'user','content': nutrition_prompt}])
+                        raw = ai_resp.choices[0].message.content.strip()
+                        json_match = re.search(r'\{[^}]+\}', raw)
+                        if json_match:
+                            parsed = _json.loads(json_match.group())
+                            calories = int(parsed.get('calories', 0))
+                            protein  = int(parsed.get('protein', 0))
+                            carbs    = int(parsed.get('carbs', 0))
+                            fats     = int(parsed.get('fats', 0))
+                            if parsed.get('food'): meal_desc = str(parsed['food']).title()
+                            ai_estimated = True
+                    except Exception as e:
+                        print(f"Groq nutrition failed: {e}")
+                if not ai_estimated:
+                    cal_match = re.search(r'(\d+)\s*(?:cal|calorie|calories|kcal)', ql)
+                    calories = int(cal_match.group(1)) if cal_match else 400
+                    prot_match = re.search(r'(\d+)\s*(?:g|gram|grams)?\s*protein', ql)
+                    protein = int(prot_match.group(1)) if prot_match else 15
+                    carbs, fats = 50, 12
+                get_col('diet_logs').insert_one({
+                    'athlete_id': aid, 'user_id': uid, 'date': today,
+                    'meal': meal_desc[:100], 'meal_type': meal_type,
+                    'calories': calories, 'protein': protein, 'carbs': carbs, 'fats': fats,
+                    'water_intake': 500, 'notes': f'Logged via AI Coach: {q}',
+                    'ai_estimated': ai_estimated, 'created_at': datetime.now().isoformat()
+                })
+                est_label = "AI-estimated" if ai_estimated else "Default estimate"
+                logged_items.append(f"**Diet Logged!** ✅ ({est_label})\n• Meal: {meal_desc[:60]}\n• Calories: {calories} kcal\n• Protein: {protein}g | Carbs: {carbs}g | Fats: {fats}g")
+
+            # ── Health detection ──
+            if any(w in ql for w in ['log health','log my health','my weight','blood pressure','heart rate','i weigh','bp is','slept','heartrate','weight:','my height']):
+                weight_match = re.search(r'(?:weigh|weight)\s*(?:is)?\s*[:=]?\s*(\d+(?:\.\d+)?)\s*(?:kg|kilo)?', ql)
+                weight = float(weight_match.group(1)) if weight_match else 65
+                height_match = re.search(r'(?:height)\s*(?:is)?\s*[:=]?\s*(\d+(?:\.\d+)?)\s*(?:cm)?', ql)
+                height = float(height_match.group(1)) if height_match else 170
+                hr_match = re.search(r'(?:heart rate|pulse|heartrate|bpm)\s*(?:is)?\s*[:=]?\s*(\d+)', ql)
+                heart_rate = int(hr_match.group(1)) if hr_match else 72
+                bp_match = re.search(r'(?:bp|blood pressure)\s*(?:is)?\s*[:=]?\s*(\d+/\d+)', ql)
+                bp = bp_match.group(1) if bp_match else '120/80'
+                sleep_match = re.search(r'(?:slept|sleep|sleeping)\s*(?:for|is)?\s*[:=]?\s*(\d+(?:\.\d+)?)\s*(?:hr|hour|hours)?', ql)
+                sleep_hours = float(sleep_match.group(1)) if sleep_match else 7
+                bmi = round(weight / (height / 100) ** 2, 1)
+                get_col('health_records').insert_one({
+                    'athlete_id': aid, 'user_id': uid, 'date': today,
+                    'height': height, 'weight': weight, 'bmi': bmi,
+                    'heart_rate': heart_rate, 'blood_pressure': bp,
+                    'sleep_hours': sleep_hours, 'injury_notes': '',
+                    'created_at': datetime.now().isoformat()
+                })
+                logged_items.append(f"**Health Record Logged!** ✅\n• Weight: {weight} kg (BMI: {bmi})\n• Heart Rate: {heart_rate} bpm\n• BP: {bp}\n• Sleep: {sleep_hours} hrs")
+
+            # ── Build AI response ──
+            h_recs = sorted(list(get_col('health_records').find({'athlete_id': aid})),
+                            key=lambda x: x.get('date', ''), reverse=True)
+            h_rec = h_recs[0] if h_recs else {}
+            ath_data = {
+                'name': athlete.get('name'), 'sport': athlete.get('sport'),
+                'age': athlete.get('age'), 'gender': athlete.get('gender'),
+                'region': athlete.get('region'), 'bio': athlete.get('bio'),
+                'achievements': athlete.get('achievements', []),
+                'health': h_rec
+            }
+
+            history_docs = sorted(list(get_col('ai_chats').find({'athlete_id': aid})),
+                                 key=lambda x: x.get('created_at', ''), reverse=True)[:5]
+            history = []
+            for h in reversed(history_docs):
+                if h.get('question') and h.get('response'):
+                    history.append({'role': 'user', 'content': h.get('question', '')})
+                    history.append({'role': 'assistant', 'content': h.get('response', '')})
+
+            resp = ai_chatbot_response(q, athlete_data=ath_data, history=history)
+
+            if logged_items:
+                confirmation = '\n\n'.join(logged_items)
+                resp = f"{confirmation}\n\n{resp}"
+
+            get_col('ai_chats').insert_one({'athlete_id': aid, 'question': q, 'response': resp, 'created_at': datetime.now().isoformat()})
+            return jsonify({'response': resp, 'bot': 'SportEquity AI'})
+
+        except Exception as e:
+            print(f"Chatbot Error: {e}")
+            import traceback
+            traceback.print_exc()
+            return jsonify({'response': f"I encountered an error: {str(e)}. Please try again.", 'bot': 'SportEquity AI'})
+
+    chats = sorted(list(get_col('ai_chats').find({'athlete_id': athlete['_id']})), key=lambda x: x.get('created_at', ''), reverse=True)
+    return render_template('chatbot.html', athlete=athlete, chat_history=chats[:20],
+                           current_user_name=athlete.get('name', session.get('full_name', 'Athlete')))
+
 
 # ─── Emergency ────────────────────────────────────────────────────────────────
 @app.route('/athlete/emergency', methods=['POST'])
@@ -1036,4 +1315,5 @@ if __name__ == '__main__':
     host = os.getenv('HOST', '0.0.0.0')
     port = int(os.getenv('PORT', 4000))
     debug = os.getenv('FLASK_DEBUG', 'True').lower() == 'true'
-    app.run(debug=debug, host=host, port=port)
+    # use_reloader=False prevents WinError 10038 on Python 3.14/Windows
+    app.run(debug=debug, host=host, port=port, use_reloader=False)
