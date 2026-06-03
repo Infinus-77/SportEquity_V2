@@ -13,6 +13,7 @@ role-based dashboards.
 pip install -r requirements.txt
 
 # 2. Configure environment (copy and edit)
+# IMPORTANT: You MUST set a valid MONGO_URI in your .env file or have a local MongoDB running.
 cp .env.example .env      # or just edit .env directly
 
 # 3. Run the app

@@ -12,7 +12,7 @@ The primary purpose of SportEquity is to democratize access to sports training, 
 Setup Instructions (After downloading the ZIP):
 1. Extract the ZIP folder and open the unzipped directory in your terminal or command prompt.
 2. Install dependencies using: pip install -r requirements.txt
-3. Configure environment variables: copy .env.example to .env (or edit .env directly).
+3. Copy the `.env.example` file to a new file named `.env` and set your MongoDB URI. (A valid MongoDB connection is strictly required for the app to run).
 4. Run the app: python app.py
 5. Login with your account by opening: http://localhost:5000/login
 
