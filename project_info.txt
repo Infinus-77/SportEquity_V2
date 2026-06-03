@@ -1,0 +1,20 @@
+Short Description of the project:
+SportEquity is an AI-Powered Sports Inclusion Platform designed to bridge the gap in athletic development and healthcare access. It is a robust, end-to-end web application built with Flask and MongoDB that seamlessly connects four key user groups: athletes, trainers, doctors, and community administrators. The platform features secure role-based dashboards, personalized digital profiles with QR code ID cards, and an integrated AI chatbot to provide instant guidance. It ensures high availability and robust data tracking.
+
+Purpose:
+The primary purpose of SportEquity is to democratize access to sports training, health monitoring, and professional guidance, particularly for athletes in rural or underserved areas who may not have personal devices. It achieves this by providing:
+- A proprietary 'SportScore' AI rating system that evaluates an athlete based on a holistic formula combining performance, health metrics, training consistency, and diet.
+- Comprehensive tracking tools for athletes to log their training intensity, daily diet, and health vitals, complete with visual performance trends.
+- A dedicated portal for trainers to monitor athlete progress, organize regional tournaments, and manage appointments.
+- A medical dashboard for doctors to monitor health indicators (like BMI and blood pressure) and respond to active emergency alerts.
+- An empowering toolset for Community Admins to manually register rural athletes, verify their identities, and manage their statistics on their behalf, ensuring nobody is left behind due to a lack of technology.
+
+Setup Instructions (After downloading the ZIP):
+1. Extract the ZIP folder and open the unzipped directory in your terminal or command prompt.
+2. Install dependencies using: pip install -r requirements.txt
+3. Configure environment variables: copy .env.example to .env (or edit .env directly).
+4. Run the app: python app.py
+5. Login with your account by opening: http://localhost:5000/login
+
+Tech stack:
+Python Flask MongoDB HTML CSS JavaScript Groq

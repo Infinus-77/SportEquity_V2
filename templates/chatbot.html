@@ -1,0 +1,524 @@
+{% extends "base.html" %}
+{% block title %}AI Coach - SportEquity{% endblock %}
+{% block extra_css %}
+<style>
+  .chat-container {
+    height: calc(100vh - 200px);
+    min-height: 500px;
+    background: var(--surface-container-lowest);
+    border-radius: var(--radius-xl);
+    border: 1px solid rgba(197,197,211,0.3);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+    box-shadow: var(--shadow-float);
+  }
+  .chat-header {
+    background: linear-gradient(135deg, var(--primary), var(--primary-container));
+    color: white;
+    padding: 1rem 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    z-index: 10;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  }
+  .chat-header .ai-avatar {
+    width: 48px;
+    height: 48px;
+    background: white;
+    color: var(--primary);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  }
+  .chat-history {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1.5rem;
+    background: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJyZ2JhKDE5NywgMTk3LCAyMTEsIDAuMDUpIiBzdHJva2Utd2lkdGg9IjEiPjxjaXJjbGUgY3g9IjMiIGN5PSIzIiByPSIxIj48L2NpcmNsZT48L3N2Zz4=');
+  }
+  .chat-msg {
+    max-width: 80%;
+    margin-bottom: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    animation: fadeUp 0.3s ease-out;
+  }
+  .chat-msg.user {
+    align-self: flex-end;
+    align-items: flex-end;
+  }
+  .chat-msg.bot {
+    align-self: flex-start;
+    align-items: flex-start;
+  }
+  .msg-bubble {
+    padding: 0.85rem 1.25rem;
+    border-radius: 1.2rem;
+    box-shadow: var(--shadow-soft);
+    line-height: 1.5;
+    word-break: break-word;
+  }
+  .chat-msg.user .msg-bubble {
+    background: var(--primary);
+    color: white;
+    border-bottom-right-radius: 0.2rem;
+  }
+  .chat-msg.bot .msg-bubble {
+    background: white;
+    color: var(--ink-dark);
+    border-bottom-left-radius: 0.2rem;
+    border: 1px solid rgba(197,197,211,0.4);
+  }
+  .msg-meta {
+    font-size: 0.7rem;
+    color: var(--ink-muted);
+    margin-top: 0.4rem;
+  }
+  .chat-input-area {
+    padding: 1.25rem;
+    background: white;
+    border-top: 1px solid rgba(197,197,211,0.3);
+    z-index: 10;
+  }
+  .chat-input-area .input-group-lg .form-control {
+    border-radius: var(--radius-full) 0 0 var(--radius-full);
+    border: 2px solid rgba(197,197,211,0.5);
+    background: var(--surface-container-lowest);
+  }
+  .chat-input-area .input-group-lg .form-control:focus {
+    border-color: var(--primary-container);
+    box-shadow: none;
+    background: white;
+  }
+  .chat-input-area .input-group-lg .btn {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
+  .chat-input-area .input-group-lg .btn:last-child {
+    border-radius: 0 var(--radius-full) var(--radius-full) 0;
+  }
+  
+  .voice-btn {
+    background: white;
+    border: 2px solid rgba(197,197,211,0.5);
+    border-left: none;
+    border-right: none;
+    color: var(--primary);
+    transition: all 0.3s ease;
+  }
+  .voice-btn.recording {
+    background: var(--error-container);
+    color: var(--error);
+    animation: pulseMic 1.5s infinite;
+  }
+  @keyframes pulseMic {
+    0% { box-shadow: 0 0 0 0 rgba(186,26,26,0.4); }
+    70% { box-shadow: 0 0 0 10px rgba(186,26,26,0); }
+    100% { box-shadow: 0 0 0 0 rgba(186,26,26,0); }
+  }
+  
+  /* Typing indicator */
+  .typing-indicator {
+    display: flex;
+    gap: 4px;
+    padding: 0.5rem 1rem;
+    background: white;
+    border: 1px solid rgba(197,197,211,0.4);
+    border-radius: 1rem;
+    border-bottom-left-radius: 0.2rem;
+    width: fit-content;
+    display: none;
+    align-self: flex-start;
+    margin-bottom: 1rem;
+    box-shadow: var(--shadow-soft);
+  }
+  .typing-indicator span {
+    width: 6px;
+    height: 6px;
+    background: var(--ink-muted);
+    border-radius: 50%;
+    animation: bounce 1.4s infinite ease-in-out both;
+  }
+  .typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+  .typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+  @keyframes bounce {
+    0%, 80%, 100% { transform: scale(0); }
+    40% { transform: scale(1); }
+  }
+
+  .suggestion-chips {
+    display: flex;
+    gap: 0.75rem;
+    padding: 0.75rem 1.25rem;
+    overflow-x: auto;
+    background: rgba(255, 255, 255, 0.5);
+    border-top: 1px solid rgba(197,197,211,0.2);
+    scrollbar-width: none;
+  }
+  .suggestion-chips::-webkit-scrollbar { display: none; }
+  
+  .chip {
+    white-space: nowrap;
+    padding: 0.5rem 1rem;
+    background: white;
+    border: 1px solid var(--primary-container);
+    border-radius: var(--radius-full);
+    color: var(--primary);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    box-shadow: var(--shadow-soft);
+  }
+  .chip:hover {
+    background: var(--primary);
+    color: white !important;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-card);
+  }
+  .chip:hover i { color: white !important; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container px-4 mt-4 mb-5">
+  
+  <div class="dashboard-header mb-4 text-center stagger-fade">
+    <span class="section-eyebrow d-block mx-auto mb-2">Personal Assistant</span>
+    <h1 style="font-size:2rem;"><i class="bi bi-robot" style="color:var(--primary-container);"></i> AI Coach</h1>
+    <div class="subtitle mx-auto">Ask about your training, diet, or overall performance</div>
+  </div>
+
+  <div class="row justify-content-center stagger-fade">
+    <div class="col-lg-12">
+      <div class="chat-container">
+        
+        <div class="chat-header">
+          <div class="ai-avatar"><i class="bi bi-robot"></i></div>
+          <div>
+            <h5 class="mb-0 fw-bold" style="font-family:var(--font-display);">CoachAI</h5>
+            <small style="opacity:0.8;">Online | Connected to your metrics</small>
+          </div>
+        </div>
+
+        <div class="chat-history d-flex flex-column" id="chatArea">
+          <!-- Initial Welcome Message -->
+          <div class="chat-msg bot">
+            <div class="msg-bubble">
+              <strong>Hi {{ current_user_name }}! 👋</strong><br>
+              I'm your AI Coach. I have access to your health logs, diet records, and training sessions. How can I help you optimize your athletic performance today?
+            </div>
+            <div class="msg-meta">Now</div>
+          </div>
+        </div>
+
+        <div class="typing-indicator" id="typingIndicator">
+          <span></span><span></span><span></span>
+        </div>
+
+        <div class="suggestion-chips" id="suggestionChips">
+          <div class="chip" data-msg="I need a diet plan for my sport."><i class="bi bi-apple text-danger"></i> Create Diet Plan</div>
+          <div class="chip" data-msg="Log my training: 30 min running at high intensity"><i class="bi bi-lightning-fill text-warning"></i> Log Training</div>
+          <div class="chip" data-msg="Analyze my recent performance metrics."><i class="bi bi-graph-up-arrow text-success"></i> Performance Stats</div>
+          <div class="chip" data-msg="I ate rice, dal and vegetables for lunch. Log my diet."><i class="bi bi-cup-hot-fill text-info"></i> Log Diet</div>
+          <div class="chip" data-msg="How should I recover from muscle soreness?"><i class="bi bi-bandaid text-primary"></i> Recovery Tips</div>
+        </div>
+
+        <div class="chat-input-area">
+          <form id="chatForm">
+            <div class="input-group input-group-lg drop-shadow">
+              <input type="text" id="userInput" class="form-control fs-6" placeholder="Ask about workouts, diet tips, or health metrics..." autocomplete="off">
+              <button class="btn voice-btn" type="button" id="voiceBtn" title="Voice Input">
+                <i class="bi bi-mic-fill"></i>
+              </button>
+              <button class="btn btn-primary" type="submit" id="sendBtn">
+                <i class="bi bi-send-fill"></i>
+              </button>
+            </div>
+          </form>
+          <div class="text-center mt-2">
+            <small class="text-muted"><i class="bi bi-shield-check"></i> Analysis is based on your logged SportEquity data.</small>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('chatForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const input = document.getElementById('userInput');
+  const msg = input.value.trim();
+  if (!msg) return;
+
+  const chatArea = document.getElementById('chatArea');
+  const typingInd = document.getElementById('typingIndicator');
+  
+  // 1. Add user message
+  const userHtml = `
+    <div class="chat-msg user">
+      <div class="msg-bubble">${escapeHtml(msg)}</div>
+      <div class="msg-meta">Just now</div>
+    </div>
+  `;
+  chatArea.insertAdjacentHTML('beforeend', userHtml);
+  
+  input.value = '';
+  chatArea.appendChild(typingInd); // Move typing indicator to bottom
+  typingInd.style.display = 'flex';
+  chatArea.scrollTop = chatArea.scrollHeight;
+
+  // 2. Fetch AI response
+  try {
+    const res = await apiPost("{{ url_for('chatbot') }}", { question: msg });
+    typingInd.style.display = 'none';
+
+    if (res && res.response) {
+      const formattedResponse = formatAiResponse(res.response);
+      const botHtml = `
+        <div class="chat-msg bot">
+          <div class="msg-bubble">${formattedResponse}</div>
+          <div class="msg-meta">AI Coach</div>
+        </div>
+      `;
+      chatArea.insertAdjacentHTML('beforeend', botHtml);
+    } else {
+      showError(chatArea);
+    }
+  } catch (err) {
+    typingInd.style.display = 'none';
+    showError(chatArea);
+  }
+  
+  chatArea.scrollTop = chatArea.scrollHeight;
+});
+
+function showError(chatArea) {
+  const errHtml = `
+    <div class="chat-msg bot">
+      <div class="msg-bubble text-danger border-danger" style="background:rgba(186,26,26,0.05);"><i class="bi bi-exclamation-triangle"></i> Sorry, I encountered an error connecting to the AI service. Please try again.</div>
+    </div>
+  `;
+  chatArea.insertAdjacentHTML('beforeend', errHtml);
+}
+
+function escapeHtml(unsafe) {
+    return unsafe
+         .replace(/&/g, "&amp;")
+         .replace(/</g, "&lt;")
+         .replace(/>/g, "&gt;")
+         .replace(/"/g, "&quot;")
+         .replace(/'/g, "&#039;");
+}
+
+function formatAiResponse(text) {
+    // 1. Extract tags first
+    const dietMatch = text.match(/\[AUTO_LOG:(.*?)\]/);
+    const trainingMatch = text.match(/\[AUTO_LOG_TRAINING:(.*?)\]/);
+    const perfMatch = text.match(/\[AUTO_LOG_PERFORMANCE:(.*?)\]/);
+    
+    let actionBtn = '';
+    let cleanText = text;
+
+    if (dietMatch) {
+        try {
+            const rawJson = dietMatch[1];
+            cleanText = cleanText.replace(dietMatch[0], '');
+            actionBtn += `
+                <div class="mt-3 p-2 bg-light border-start border-warning border-4 rounded shadow-sm">
+                    <p class="mb-2 small fw-bold"><i class="bi bi-apple text-warning"></i> Save this suggested diet plan?</p>
+                    <button class="btn btn-sm btn-warning fw-bold px-3" onclick='autoLogAction(event, "diet", ${rawJson})'>
+                        <i class="bi bi-calendar-check-fill"></i> Save as Daily Plan
+                    </button>
+                </div>
+            `;
+        } catch(e) { console.error("Diet parse error", e); }
+    }
+
+    if (trainingMatch) {
+        try {
+            const rawJson = trainingMatch[1];
+            cleanText = cleanText.replace(trainingMatch[0], '');
+            actionBtn += `
+                <div class="mt-3 p-2 bg-light border-start border-primary border-4 rounded shadow-sm">
+                    <p class="mb-2 small fw-bold"><i class="bi bi-lightning-fill text-primary"></i> Log this training session?</p>
+                    <button class="btn btn-sm btn-primary fw-bold px-3" onclick='autoLogAction(event, "training", ${rawJson})'>
+                        <i class="bi bi-plus-circle-fill"></i> Log Workout
+                    </button>
+                </div>
+            `;
+        } catch(e) { console.error("Training parse error", e); }
+    }
+
+    if (perfMatch) {
+        try {
+            const rawJson = perfMatch[1];
+            cleanText = cleanText.replace(perfMatch[0], '');
+            actionBtn += `
+                <div class="mt-3 p-2 bg-light border-start border-success border-4 rounded shadow-sm">
+                    <p class="mb-2 small fw-bold"><i class="bi bi-graph-up-arrow text-success"></i> Save performance insight?</p>
+                    <button class="btn btn-sm btn-success fw-bold px-3" onclick='autoLogAction(event, "performance", ${rawJson})'>
+                        <i class="bi bi-bookmark-star-fill"></i> Save to Profile
+                    </button>
+                </div>
+            `;
+        } catch(e) { console.error("Perf parse error", e); }
+    }
+
+    // 2. Escape remaining text
+    let formatted = escapeHtml(cleanText);
+    formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    formatted = formatted.replace(/\n/g, '<br>');
+    return formatted + actionBtn;
+}
+
+async function autoLogAction(event, type, data) {
+    const btn = event.target.closest('button');
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Saving...';
+
+    const urlMap = {
+        'diet': "{{ url_for('api_auto_log_diet') }}",
+        'training': "{{ url_for('api_auto_log_training') }}",
+        'performance': "{{ url_for('api_auto_log_performance') }}"
+    };
+
+    try {
+        const res = await apiPost(urlMap[type], data);
+        if (res && res.success) {
+            btn.innerHTML = '<i class="bi bi-check-circle-fill"></i> Saved!';
+            btn.classList.replace('btn-primary', 'btn-success');
+            btn.classList.replace('btn-warning', 'btn-success');
+        } else {
+            throw new Error('Failed');
+        }
+    } catch(err) {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-exclamation-triangle"></i> Error';
+        setTimeout(() => { btn.innerHTML = originalHtml; }, 2000);
+    }
+}
+
+// Voice Input Logic — Comprehensive: navigation + chatbot + actions
+const voiceBtn = document.getElementById('voiceBtn');
+if (window.webkitSpeechRecognition || window.SpeechRecognition) {
+    const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new Recognition();
+    recognition.lang = 'en-US';
+    recognition.interimResults = false;
+    recognition.continuous = false;
+
+    voiceBtn.addEventListener('click', () => {
+        if (voiceBtn.classList.contains('recording')) {
+            recognition.stop();
+        } else {
+            try { recognition.start(); } catch(e) { console.log('Already listening'); }
+        }
+    });
+
+    recognition.onstart = () => {
+        voiceBtn.classList.add('recording');
+        voiceBtn.title = 'Listening... Speak now';
+    };
+
+    recognition.onend = () => {
+        voiceBtn.classList.remove('recording');
+        voiceBtn.title = 'Voice Input';
+    };
+
+    recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        const cmd = transcript.toLowerCase().trim();
+        console.log('Voice:', cmd);
+
+        // ── Navigation-only commands (pages that are NOT logging forms) ──
+        const navCommands = {
+            'dashboard': '/athlete/dashboard',
+            'go to dashboard': '/athlete/dashboard',
+            'open dashboard': '/athlete/dashboard',
+            'id card': '/athlete/id-card',
+            'show id card': '/athlete/id-card',
+            'show my id': '/athlete/id-card',
+            'profile': '/athlete/profile',
+            'go to profile': '/athlete/profile',
+            'my profile': '/athlete/profile',
+            'appointments': '/appointments',
+            'go to appointments': '/appointments',
+            'book appointment': '/appointments',
+            'tournaments': '/tournaments',
+            'go to tournaments': '/tournaments',
+        };
+
+        // Check navigation (non-logging pages only)
+        for (const [phrase, url] of Object.entries(navCommands)) {
+            if (cmd.includes(phrase)) {
+                addBotMessage(`🗣️ Navigating to <strong>${phrase}</strong>...`);
+                setTimeout(() => { window.location.href = url; }, 800);
+                return;
+            }
+        }
+
+        // Check for emergency
+        if (cmd.includes('emergency') || cmd.includes('help me') || cmd.includes('alert')) {
+            const emergencyModal = document.getElementById('emergencyModal');
+            if (emergencyModal) {
+                addBotMessage('🚨 Opening <strong>Emergency Alert</strong>...');
+                setTimeout(() => { new bootstrap.Modal(emergencyModal).show(); }, 500);
+            }
+            return;
+        }
+
+        // ── Everything else → send to AI chatbot (logging, diet, training, health, questions) ──
+        document.getElementById('userInput').value = transcript;
+        document.getElementById('chatForm').dispatchEvent(new Event('submit'));
+    };
+
+    recognition.onerror = (event) => {
+        console.error('Voice error:', event.error);
+        voiceBtn.classList.remove('recording');
+        if (event.error === 'not-allowed') {
+            addBotMessage('⚠️ Microphone access denied. Please allow microphone access in your browser settings.');
+        }
+    };
+} else {
+    if (voiceBtn) voiceBtn.style.display = 'none';
+}
+
+// Helper: add a bot message to the chat
+function addBotMessage(html) {
+    const chatArea = document.getElementById('chatArea');
+    chatArea.insertAdjacentHTML('beforeend', `
+        <div class="chat-msg bot">
+            <div class="msg-bubble">${html}</div>
+            <div class="msg-meta">AI Coach</div>
+        </div>
+    `);
+    chatArea.scrollTop = chatArea.scrollHeight;
+}
+
+// Quick Suggestion Chips
+document.querySelectorAll('.chip').forEach(chip => {
+  chip.addEventListener('click', function() {
+    const msg = this.getAttribute('data-msg');
+    const input = document.getElementById('userInput');
+    input.value = msg;
+    document.getElementById('chatForm').dispatchEvent(new Event('submit'));
+  });
+});
+</script>
+{% endblock %}

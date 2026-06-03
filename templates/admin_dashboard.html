@@ -1,0 +1,332 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard - SportEquity{% endblock %}
+{% block extra_css %}
+<style>
+  .admin-action-btn { transition: all 0.2s ease; }
+  .admin-action-btn:hover { transform: translateY(-2px); box-shadow: var(--shadow-card); }
+  .athlete-stat-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px; border-radius: var(--radius-full);
+    font-size: 0.75rem; font-weight: 600;
+  }
+  .modal-body .form-label { font-size: 0.8rem; text-transform: uppercase; font-weight: 700; color: var(--ink-muted); }
+</style>
+{% endblock %}
+{% block content %}
+<div class="container-fluid px-4">
+
+  <!-- ── Banner ─────────────────────────────────────────── -->
+  <div class="page-banner">
+    <img src="{{ url_for('static', filename='img/tournament_stadium.png') }}" alt="Admin Dashboard">
+    <div class="banner-overlay">
+      <div class="banner-text">
+        <h3>Community Administration</h3>
+        <p>Manage users, verify athletes, create tournaments, and oversee activity</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="dashboard-header d-flex align-items-start justify-content-between flex-wrap gap-3">
+    <div>
+      <span class="section-eyebrow">Admin Dashboard</span>
+      <h1 style="font-size:1.9rem;"><i class="bi bi-shield-lock" style="color:var(--primary-container);"></i> {{ admin.full_name }}</h1>
+      <div class="subtitle">Region: {{ admin_region or 'Global' }}</div>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="{{ url_for('admin_create_athlete') }}" class="btn btn-success"><i class="bi bi-person-plus-fill"></i> Create Athlete</a>
+      <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#tournamentModal"><i class="bi bi-trophy-fill"></i> Add Tournament</button>
+      <a href="{{ url_for('admin_statistics') }}" class="btn btn-outline-primary"><i class="bi bi-bar-chart-fill"></i> Statistics</a>
+    </div>
+  </div>
+
+  <!-- ── Stats ───────────────────────────────── -->
+  <div class="row g-3 mb-4 stagger-fade">
+    {% for label,val,color,icon in [
+      ('Total Athletes',stats.total_athletes,'primary','bi-people-fill'),
+      ('Pending Verification',stats.pending_athletes,'warning','bi-person-badge-fill'),
+      ('Total Trainers',stats.total_trainers,'info','bi-person-gear'),
+      ('Total Doctors',stats.total_doctors,'success','bi-hospital-fill')
+    ] %}
+    <div class="col-md-3">
+      <div class="stat-card-enhanced card-ripple tilt-card">
+        <div class="stat-icon" style="background:rgba(30,58,138,0.08);color:var(--primary-container);">
+          <i class="bi {{ icon }}"></i>
+        </div>
+        <div class="stat-number text-{{ color }}">{{ val }}</div>
+        <div class="stat-label">{{ label }}</div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- ── Pending Verifications ───────────────── -->
+  <div class="row g-4 mb-4">
+    <div class="col-lg-12">
+      <div class="card card-interactive">
+        <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
+          <h5 class="mb-0"><i class="bi bi-person-badge"></i> Pending Verifications</h5>
+          <span class="badge bg-dark">{{ unverified_athletes|length }}</span>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover mb-0">
+              <thead><tr><th>Name</th><th>Sport</th><th>Email</th><th>Region</th><th>Applied</th><th>Actions</th></tr></thead>
+              <tbody>
+                {% if unverified_athletes %}
+                  {% for a in unverified_athletes %}
+                  <tr>
+                    <td><strong>{{ a.name }}</strong></td>
+                    <td><span class="badge bg-secondary">{{ a.sport or 'N/A' }}</span></td>
+                    <td>{{ a.email or '—' }}</td>
+                    <td>{{ a.region or '—' }}</td>
+                    <td>{{ a.created_at[:10] if a.created_at else '—' }}</td>
+                    <td>
+                      <div class="d-flex gap-1">
+                        <form method="POST" action="{{ url_for('admin_verify_athlete', athlete_id=a._id) }}" style="display:inline;">
+                          <input type="hidden" name="action" value="verify">
+                          <button class="btn btn-sm btn-success admin-action-btn"><i class="bi bi-check-circle-fill"></i> Verify</button>
+                        </form>
+                        <a href="{{ url_for('public_athlete_profile', athlete_id=a._id) }}" class="btn btn-sm btn-outline-primary admin-action-btn"><i class="bi bi-eye"></i></a>
+                        <button class="btn btn-sm btn-outline-info admin-action-btn" onclick="openEditModal('{{ a._id }}', '{{ a.name }}', '{{ a.age or 0 }}', '{{ a.sport or '' }}', '{{ a.region or '' }}', `{{ a.bio or '' }}`, `{{ (a.achievements or [])|join('\n') }}`)"><i class="bi bi-pencil"></i></button>
+                      </div>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                {% else %}
+                  <tr><td colspan="6" class="text-center text-muted py-4"><i class="bi bi-check-circle text-success fs-4"></i><br>All athletes verified!</td></tr>
+                {% endif %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── All Athletes with Stats ─────────────── -->
+  <div class="row g-4 mb-4">
+    <div class="col-lg-12">
+      <div class="card card-interactive">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+          <h5 class="mb-0"><i class="bi bi-people-fill"></i> All Athletes</h5>
+          <span class="badge bg-light text-primary">{{ athletes|length }} total</span>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover mb-0">
+              <thead><tr>
+                <th>Name</th><th>Sport</th><th>Region</th><th>Status</th>
+                <th class="text-center">Training</th><th class="text-center">Health</th><th class="text-center">Diet</th>
+                <th>Actions</th>
+              </tr></thead>
+              <tbody>
+                {% for a in athletes %}
+                <tr>
+                  <td>
+                    <strong>{{ a.name }}</strong>
+                    {% if a.managed_by_admin %}<br><small class="text-muted"><i class="bi bi-shield-check"></i> Admin-created</small>{% endif %}
+                  </td>
+                  <td><span class="badge bg-info">{{ a.sport or 'N/A' }}</span></td>
+                  <td>{{ a.region or '—' }}</td>
+                  <td>
+                    {% if a.verified %}
+                      <span class="badge bg-success"><i class="bi bi-patch-check-fill"></i> Verified</span>
+                    {% else %}
+                      <span class="badge bg-warning text-dark"><i class="bi bi-hourglass-split"></i> Pending</span>
+                    {% endif %}
+                  </td>
+                  <td class="text-center">
+                    <span class="athlete-stat-badge bg-primary text-white">
+                      <i class="bi bi-activity"></i> {{ a.training_count or 0 }}
+                    </span>
+                  </td>
+                  <td class="text-center">
+                    <span class="athlete-stat-badge bg-danger text-white">
+                      <i class="bi bi-heart-pulse"></i> {{ a.health_count or 0 }}
+                    </span>
+                  </td>
+                  <td class="text-center">
+                    <span class="athlete-stat-badge bg-warning text-dark">
+                      <i class="bi bi-cup-hot"></i> {{ a.diet_count or 0 }}
+                    </span>
+                  </td>
+                  <td>
+                    <div class="d-flex gap-1 flex-wrap">
+                      <a href="{{ url_for('public_athlete_profile', athlete_id=a._id) }}" class="btn btn-sm btn-outline-primary admin-action-btn" title="View Public Profile"><i class="bi bi-person-lines-fill"></i></a>
+                      <button class="btn btn-sm btn-outline-info admin-action-btn" title="Edit Profile" onclick="openEditModal('{{ a._id }}', '{{ a.name }}', '{{ a.age or 0 }}', '{{ a.sport or '' }}', '{{ a.region or '' }}', `{{ a.bio or '' }}`, `{{ (a.achievements or [])|join('\n') }}`)"><i class="bi bi-pencil-square"></i></button>
+                      {% if a.verified %}
+                        <form method="POST" action="{{ url_for('admin_verify_athlete', athlete_id=a._id) }}" style="display:inline;">
+                          <input type="hidden" name="action" value="unverify">
+                          <button class="btn btn-sm btn-outline-danger admin-action-btn" title="Revoke Verification"><i class="bi bi-x-circle"></i></button>
+                        </form>
+                      {% else %}
+                        <form method="POST" action="{{ url_for('admin_verify_athlete', athlete_id=a._id) }}" style="display:inline;">
+                          <input type="hidden" name="action" value="verify">
+                          <button class="btn btn-sm btn-success admin-action-btn" title="Verify"><i class="bi bi-check-lg"></i></button>
+                        </form>
+                      {% endif %}
+                    </div>
+                  </td>
+                </tr>
+                {% endfor %}
+                {% if not athletes %}
+                  <tr><td colspan="8" class="text-center text-muted py-4">No athletes registered yet.</td></tr>
+                {% endif %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Tournaments ─────────────────────────── -->
+  <div class="row g-4 mb-4">
+    <div class="col-lg-12">
+      <div class="card card-interactive">
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+          <h5 class="mb-0"><i class="bi bi-trophy-fill"></i> Tournaments</h5>
+          <button class="btn btn-sm btn-warning text-dark" data-bs-toggle="modal" data-bs-target="#tournamentModal"><i class="bi bi-plus-lg"></i> New</button>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-hover mb-0">
+              <thead><tr><th>Name</th><th>Sport</th><th>Location</th><th>Start</th><th>End</th><th>Participants</th></tr></thead>
+              <tbody>
+                {% for t in tournaments %}
+                <tr>
+                  <td><strong>{{ t.name }}</strong></td>
+                  <td><span class="badge bg-info">{{ t.sport }}</span></td>
+                  <td><i class="bi bi-geo-alt"></i> {{ t.location }}</td>
+                  <td>{{ t.start_date }}</td>
+                  <td>{{ t.end_date }}</td>
+                  <td><span class="badge bg-primary">{{ (t.participants or [])|length }}</span></td>
+                </tr>
+                {% endfor %}
+                {% if not tournaments %}
+                  <tr><td colspan="6" class="text-center text-muted py-4">No tournaments yet. Click <strong>Add Tournament</strong> to create one.</td></tr>
+                {% endif %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ── Tournament Creation Modal ──────────────── -->
+<div class="modal fade" id="tournamentModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content" style="border-radius: var(--radius-lg); overflow: hidden;">
+      <div class="modal-header bg-dark text-white">
+        <h5 class="modal-title"><i class="bi bi-trophy-fill text-warning"></i> Create Tournament</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" action="{{ url_for('admin_create_tournament') }}">
+        <div class="modal-body">
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label class="form-label">Tournament Name <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" name="name" placeholder="e.g. District Athletics Championship" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Sport <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" name="sport" placeholder="e.g. Athletics, Cricket, Football" required>
+            </div>
+          </div>
+          <div class="row mb-3">
+            <div class="col-md-12">
+              <label class="form-label">Location <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" name="location" placeholder="e.g. Shivaji Stadium, Pune" required>
+            </div>
+          </div>
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label class="form-label">Start Date <span class="text-danger">*</span></label>
+              <input type="date" class="form-control" name="start_date" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">End Date <span class="text-danger">*</span></label>
+              <input type="date" class="form-control" name="end_date" required>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Description</label>
+            <textarea class="form-control" name="description" rows="3" placeholder="Tournament details, eligibility criteria, etc."></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-warning text-dark fw-bold"><i class="bi bi-trophy-fill"></i> Create Tournament</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ── Edit Athlete Modal ─────────────────────── -->
+<div class="modal fade" id="editAthleteModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content" style="border-radius: var(--radius-lg); overflow: hidden;">
+      <div class="modal-header bg-info text-white">
+        <h5 class="modal-title"><i class="bi bi-pencil-square"></i> Edit Athlete Profile</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" id="editAthleteForm">
+        <div class="modal-body">
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label class="form-label">Full Name</label>
+              <input type="text" class="form-control" name="name" id="editName" required>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Age</label>
+              <input type="number" class="form-control" name="age" id="editAge" min="5" max="100">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Sport</label>
+              <input type="text" class="form-control" name="sport" id="editSport">
+            </div>
+          </div>
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label class="form-label">Region</label>
+              <input type="text" class="form-control" name="region" id="editRegion">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Bio</label>
+              <input type="text" class="form-control" name="bio" id="editBio">
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Achievements (one per line)</label>
+            <textarea class="form-control" name="achievements" id="editAchievements" rows="3"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-info text-white fw-bold"><i class="bi bi-check-circle-fill"></i> Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function openEditModal(id, name, age, sport, region, bio, achievements) {
+  document.getElementById('editAthleteForm').action = '/admin/athletes/' + id + '/update';
+  document.getElementById('editName').value = name;
+  document.getElementById('editAge').value = age;
+  document.getElementById('editSport').value = sport;
+  document.getElementById('editRegion').value = region;
+  document.getElementById('editBio').value = bio;
+  document.getElementById('editAchievements').value = achievements;
+  new bootstrap.Modal(document.getElementById('editAthleteModal')).show();
+}
+</script>
+{% endblock %}

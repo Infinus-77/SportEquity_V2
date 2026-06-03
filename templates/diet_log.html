@@ -1,0 +1,239 @@
+{% extends "base.html" %}
+{% block title %}Log Diet - SportEquity{% endblock %}
+{% block extra_css %}
+<style>
+  .record-card { transition: all 0.2s ease; border-left: 4px solid #D97706; }
+  .record-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-card); }
+  .macro-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 10px; border-radius: var(--radius-full); font-size: 0.78rem; font-weight: 600; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="container-fluid px-4 py-4">
+  <div class="row justify-content-center stagger-fade">
+    <div class="col-md-9 col-lg-7">
+      
+      <div class="text-center mb-4">
+        <div class="d-inline-flex justify-content-center align-items-center bg-warning text-white mb-3 shadow" style="width:64px;height:64px;border-radius:50%;">
+            <i class="bi bi-cup-hot-fill fs-3 text-dark"></i>
+        </div>
+        <h2 class="fw-bold" style="font-family:var(--font-display);">Nutrition Logger</h2>
+        <p class="text-muted">Record your meals to receive AI-powered dietary insights</p>
+      </div>
+
+      <div class="card card-interactive shadow-sm border-0" style="border-radius:var(--radius-lg);">
+        <div class="card-body p-4 p-md-5">
+          <form method="POST">
+            <div class="row mb-4">
+              <div class="col-md-6 mb-3 mb-md-0">
+                <label class="form-label fw-bold text-muted" style="font-size:0.85rem;text-transform:uppercase;">Date <span class="text-danger">*</span></label>
+                <input type="date" class="form-control form-control-lg bg-light" name="date" value="{{ now }}" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-bold text-muted" style="font-size:0.85rem;text-transform:uppercase;">Meal Type <span class="text-danger">*</span></label>
+                <select class="form-select form-select-lg bg-light" name="meal" required>
+                  <option value="">Select meal</option>
+                  <option>Breakfast</option><option>Lunch</option><option>Dinner</option>
+                  <option>Pre-workout Snack</option><option>Post-workout Meal</option><option>General Snack</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="mb-4 p-3 bg-light" style="border-radius:var(--radius-md); border:1px dashed #D97706;">
+              <label class="form-label fw-bold text-dark" style="font-size:0.85rem;text-transform:uppercase;"><i class="bi bi-robot text-warning"></i> AI Food Macros Predictor</label>
+              <div class="input-group mb-2 shadow-sm" style="border-radius:var(--radius-sm); overflow:hidden;">
+                <input type="text" class="form-control border-0" id="foodQuery" placeholder="E.g., 1 bowl of oatmeal, 2 boiled eggs">
+                <button type="button" class="btn btn-warning fw-bold text-dark px-4" id="btnPredict"><i class="bi bi-stars"></i> Predict</button>
+              </div>
+              <small class="text-muted" id="predictStatus">Type food and amount to auto-fill calories, protein, carbs, and fats below.</small>
+            </div>
+
+            <div class="row mb-4">
+              <div class="col-md-6 mb-3 mb-md-0">
+                <label class="form-label fw-bold text-muted" style="font-size:0.85rem;text-transform:uppercase;">Calories (kcal)</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-white text-warning"><i class="bi bi-fire"></i></span>
+                  <input type="number" class="form-control" name="calories" id="inputCalories" min="0" max="10000" placeholder="e.g. 600">
+                </div>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-bold text-muted" style="font-size:0.85rem;text-transform:uppercase;">Protein (g)</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-white text-success"><i class="bi bi-egg-fried"></i></span>
+                  <input type="number" class="form-control" name="protein" id="inputProtein" min="0" max="500" placeholder="e.g. 40">
+                </div>
+              </div>
+            </div>
+
+            <div class="row mb-4">
+              <div class="col-md-6 mb-3 mb-md-0">
+                <label class="form-label fw-bold text-muted" style="font-size:0.85rem;text-transform:uppercase;">Carbs (g)</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-white" style="color:var(--accent-dim);"><i class="bi bi-heptagon-fill"></i></span>
+                  <input type="number" class="form-control" name="carbs" id="inputCarbs" min="0" max="1000" placeholder="e.g. 70">
+                </div>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label fw-bold text-muted" style="font-size:0.85rem;text-transform:uppercase;">Fats (g)</label>
+                <div class="input-group">
+                  <span class="input-group-text bg-white text-danger"><i class="bi bi-droplet-fill"></i></span>
+                  <input type="number" class="form-control" name="fats" id="inputFats" min="0" max="500" placeholder="e.g. 20">
+                </div>
+              </div>
+            </div>
+
+            <div class="mb-4">
+              <label class="form-label fw-bold text-muted" style="font-size:0.85rem;text-transform:uppercase;">Water Intake (ml)</label>
+              <div class="input-group">
+                <span class="input-group-text bg-white text-info"><i class="bi bi-water"></i></span>
+                <input type="number" class="form-control" name="water_intake" min="0" max="10000" step="50" placeholder="e.g. 500">
+              </div>
+            </div>
+
+            <div class="mb-4">
+              <label class="form-label fw-bold text-muted" style="font-size:0.85rem;text-transform:uppercase;">Meal Description / Notes</label>
+              <textarea class="form-control bg-light" name="notes" id="notesField" rows="3" placeholder="What did you eat? E.g., Grilled chicken with quinoa and broccoli"></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-warning w-100 py-3 fw-bold mb-3 text-dark" style="border-radius:var(--radius-full); font-size:1.1rem; box-shadow:0 8px 24px rgba(217,119,6,0.2);">
+              <i class="bi bi-check-circle-fill"></i> Save Nutrition Log
+            </button>
+            <div class="text-center mt-3">
+                <a href="{{ url_for('athlete_dashboard') }}" class="text-muted text-decoration-none"><i class="bi bi-arrow-left"></i> Back to Dashboard</a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Diet Records History ──────────────── -->
+  {% if records %}
+  <div class="row justify-content-center mt-5">
+    <div class="col-md-9 col-lg-7">
+      <h4 class="fw-bold mb-3"><i class="bi bi-clock-history" style="color:#D97706;"></i> Diet History <span class="badge bg-warning text-dark">{{ records|length }}</span></h4>
+      {% for r in records %}
+      <div class="card record-card mb-3 border-0 shadow-sm" style="border-radius:var(--radius-md);">
+        <div class="card-body py-3 px-4">
+          <div class="d-flex justify-content-between align-items-start">
+            <div class="flex-grow-1">
+              <div class="d-flex align-items-center gap-2 mb-1">
+                <strong>{{ r.meal or 'Meal' }}</strong>
+                <small class="text-muted"><i class="bi bi-calendar3"></i> {{ r.date or 'N/A' }}</small>
+              </div>
+              <div class="d-flex flex-wrap gap-2 mt-1">
+                {% if r.calories %}<span class="macro-badge bg-warning text-dark"><i class="bi bi-fire"></i> {{ r.calories }} kcal</span>{% endif %}
+                {% if r.protein %}<span class="macro-badge bg-success text-white"><i class="bi bi-egg-fried"></i> {{ r.protein }}g protein</span>{% endif %}
+                {% if r.carbs %}<span class="macro-badge bg-info text-white">{{ r.carbs }}g carbs</span>{% endif %}
+                {% if r.fats %}<span class="macro-badge bg-danger text-white">{{ r.fats }}g fats</span>{% endif %}
+                {% if r.water_intake %}<span class="macro-badge bg-primary text-white"><i class="bi bi-water"></i> {{ r.water_intake }}ml</span>{% endif %}
+              </div>
+              {% if r.notes %}<small class="text-muted d-block mt-1"><i class="bi bi-chat-text"></i> {{ r.notes[:80] }}</small>{% endif %}
+            </div>
+            <div class="d-flex gap-1">
+              <button class="btn btn-sm btn-outline-info" title="Edit" onclick="openEditDiet('{{ r._id }}', '{{ r.date }}', '{{ r.meal }}', '{{ r.calories or 0 }}', '{{ r.protein or 0 }}', '{{ r.carbs or 0 }}', '{{ r.fats or 0 }}', '{{ r.water_intake or 0 }}', `{{ r.notes or '' }}`)"><i class="bi bi-pencil"></i></button>
+              <form method="POST" action="{{ url_for('delete_record', collection='diet', record_id=r._id) }}" onsubmit="return confirm('Delete this diet record?')">
+                <button class="btn btn-sm btn-outline-danger" title="Delete"><i class="bi bi-trash"></i></button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Edit Diet Modal -->
+<div class="modal fade" id="editDietModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content" style="border-radius:var(--radius-lg);overflow:hidden;">
+      <div class="modal-header bg-warning text-dark">
+        <h5 class="modal-title"><i class="bi bi-pencil-square"></i> Edit Diet Record</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" id="editDietForm">
+        <div class="modal-body">
+          <div class="row mb-3">
+            <div class="col-6"><label class="form-label fw-bold">Date</label><input type="date" class="form-control" name="date" id="edDate" required></div>
+            <div class="col-6"><label class="form-label fw-bold">Meal Type</label><input type="text" class="form-control" name="meal" id="edMeal" required></div>
+          </div>
+          <div class="row mb-3">
+            <div class="col-6"><label class="form-label fw-bold">Calories</label><input type="number" class="form-control" name="calories" id="edCal"></div>
+            <div class="col-6"><label class="form-label fw-bold">Protein (g)</label><input type="number" class="form-control" name="protein" id="edProt"></div>
+          </div>
+          <div class="row mb-3">
+            <div class="col-6"><label class="form-label fw-bold">Carbs (g)</label><input type="number" class="form-control" name="carbs" id="edCarbs"></div>
+            <div class="col-6"><label class="form-label fw-bold">Fats (g)</label><input type="number" class="form-control" name="fats" id="edFats"></div>
+          </div>
+          <div class="row mb-3">
+            <div class="col-6"><label class="form-label fw-bold">Water (ml)</label><input type="number" class="form-control" name="water_intake" id="edWater"></div>
+          </div>
+          <div class="mb-3"><label class="form-label fw-bold">Notes</label><textarea class="form-control" name="notes" id="edNotes" rows="2"></textarea></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-warning text-dark fw-bold"><i class="bi bi-check-circle-fill"></i> Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('btnPredict').addEventListener('click', async function() {
+    const foodItems = document.getElementById('foodQuery').value.trim();
+    if(!foodItems) return;
+    const btn = this;
+    const originalText = btn.innerHTML;
+    const statusText = document.getElementById('predictStatus');
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Predicting...';
+    btn.disabled = true;
+    statusText.innerText = "Analyzing nutritional content with AI...";
+    statusText.className = "text-info";
+    try {
+        const response = await fetch("{{ url_for('predict_nutrition') }}", {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ food: foodItems })
+        });
+        const data = await response.json();
+        if (data.calories !== undefined) {
+            document.getElementById('inputCalories').value = data.calories;
+            document.getElementById('inputProtein').value = data.protein;
+            document.getElementById('inputCarbs').value = data.carbs;
+            document.getElementById('inputFats').value = data.fats;
+            let notes = document.getElementById('notesField');
+            if(!notes.value.includes(foodItems)) {
+                notes.value = (notes.value ? notes.value + '\n' : '') + foodItems;
+            }
+            statusText.innerText = "Macros successfully synced!";
+            statusText.className = "text-success fw-bold";
+        } else {
+            statusText.innerText = "Could not estimate. Please input manually.";
+            statusText.className = "text-danger";
+        }
+    } catch(err) {
+        statusText.innerText = "Error analyzing food.";
+        statusText.className = "text-danger";
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+});
+
+function openEditDiet(id, date, meal, cal, prot, carbs, fats, water, notes) {
+  document.getElementById('editDietForm').action = '/api/record/diet/' + id + '/edit';
+  document.getElementById('edDate').value = date;
+  document.getElementById('edMeal').value = meal;
+  document.getElementById('edCal').value = cal;
+  document.getElementById('edProt').value = prot;
+  document.getElementById('edCarbs').value = carbs;
+  document.getElementById('edFats').value = fats;
+  document.getElementById('edWater').value = water;
+  document.getElementById('edNotes').value = notes;
+  new bootstrap.Modal(document.getElementById('editDietModal')).show();
+}
+</script>
+{% endblock %}

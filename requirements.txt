@@ -1,0 +1,9 @@
+flask
+pymongo
+dnspython
+python-dotenv
+qrcode
+# Optional: uncomment for Groq AI chatbot
+groq
+pillow
+

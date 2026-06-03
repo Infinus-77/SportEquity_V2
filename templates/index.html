@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+{% block title %}SportEquity — Elevate Every Athlete{% endblock %}
+
+{% block content %}
+<!-- ── HERO SECTION ───────────────────────────────────────────────────────── -->
+<div class="hero-section text-center">
+    <!-- Main Hero Image Background -->
+    <div style="position:absolute;inset:0;opacity:0.25;z-index:-1;background:url('{{ url_for('static', filename='img/training_action.png') }}') center/cover;"></div>
+    <div class="container d-flex flex-column align-items-center justify-content-center" style="min-height: 85vh;">
+        <img src="{{ url_for('static', filename='img/training_action.png') }}" alt="Hero Image" style="width: 140px; height: 140px; border-radius: 50%; object-fit: cover; border: 4px solid rgba(255,255,255,0.2); margin-bottom: 1.5rem; animation: fadeUp 0.6s ease; box-shadow: 0 12px 32px rgba(0,0,0,0.3);">
+        
+        <span class="badge bg-primary mb-3 px-3 py-2" style="border-radius: var(--radius-full); font-weight: 700; letter-spacing: 0.05em; animation: fadeUp 0.8s ease; box-shadow: 0 6px 16px rgba(0,0,0,0.4); text-shadow: 0 1px 3px rgba(0,0,0,0.8);">
+            <i class="bi bi-stars"></i> Next-Gen Sports Platform
+        </span>
+        <h1 class="display-3 fw-bold mb-4" style="color:white; max-width: 900px; line-height: 1.1; animation: fadeUp 1s ease; text-shadow: 0 4px 12px rgba(0,0,0,0.5);">
+            Empowering athletes with <span style="background: linear-gradient(135deg, var(--accent), var(--accent-dim)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-shadow: none;">AI-Driven</span> Insights
+        </h1>
+        <p class="lead mb-5" style="color:rgba(255,255,255,0.9); max-width: 700px; animation: fadeUp 1.2s ease; text-shadow: 0 2px 8px rgba(0,0,0,0.6); font-weight: 500;">
+            Join the platform built to democratize sports training. Get personalized coaching routines, precise health monitoring, and direct connections to regional tournaments—all powered by advanced AI.
+        </p>
+        <div class="d-flex gap-3 justify-content-center flex-wrap" style="animation: fadeUp 1.4s ease;">
+            <a href="{{ url_for('register') }}" class="btn btn-lg px-5 py-3" style="background:var(--accent); color:var(--cta-text); font-weight: 800; box-shadow: 0 8px 24px rgba(74,225,118,0.3); border-radius: var(--radius-full); transition: transform 0.3s ease;">
+                Start Training Free <i class="bi bi-arrow-right ms-2"></i>
+            </a>
+            <a href="{{ url_for('login') }}" class="btn btn-outline-primary btn-lg px-5 py-3" style="border-radius: var(--radius-full); font-weight: 700; background:white;">
+                Sign In
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- ── STATS STRIP ──────────────────────────────────────────────────────── -->
+<div class="stagger-fade" style="background: var(--surface-container); padding: 3rem 0; border-top: 1px solid rgba(197,197,211,0.3); border-bottom: 1px solid rgba(197,197,211,0.3);">
+    <div class="container">
+        <div class="row text-center g-4">
+            <div class="col-md-4">
+                <h3 class="display-5 fw-bold" style="color:var(--primary); font-family:var(--font-display);">10K+</h3>
+                <p class="text-uppercase fw-bold text-muted mb-0" style="letter-spacing:0.05em;font-size:0.85rem;">Active Athletes</p>
+            </div>
+            <div class="col-md-4">
+                <h3 class="display-5 fw-bold" style="color:var(--accent-dim); font-family:var(--font-display);">500+</h3>
+                <p class="text-uppercase fw-bold text-muted mb-0" style="letter-spacing:0.05em;font-size:0.85rem;">Verified Coaches</p>
+            </div>
+            <div class="col-md-4">
+                <h3 class="display-5 fw-bold" style="color:var(--tertiary); font-family:var(--font-display);">50+</h3>
+                <p class="text-uppercase fw-bold text-muted mb-0" style="letter-spacing:0.05em;font-size:0.85rem;">Sports Supported</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── FEATURES SECTION ─────────────────────────────────────────────────── -->
+<div class="container py-5 my-5">
+    <div class="text-center mb-5 stagger-fade">
+        <span class="section-eyebrow d-block align-center mb-2 mx-auto">Platform Features</span>
+        <h2 style="font-family:var(--font-display); font-weight:800; font-size:2.5rem;">Everything you need to excel</h2>
+    </div>
+
+    <div class="row g-4 align-items-center mb-5 stagger-fade">
+        <div class="col-lg-6">
+            <div class="page-banner mb-0" style="height:400px;">
+                <img src="{{ url_for('static', filename='img/training_action.png') }}" alt="AI Training">
+            </div>
+        </div>
+        <div class="col-lg-6 px-lg-5">
+            <div class="d-inline-flex align-items-center justify-content-center bg-primary text-white mb-3" style="width:56px;height:56px;border-radius:16px;">
+                <i class="bi bi-activity fs-3"></i>
+            </div>
+            <h3 class="fw-bold mb-3">AI-Powered Training Plans</h3>
+            <p class="text-muted fs-5 mb-4">Our proprietary AI analyzes your performance data from daily logs to create dynamically adapting workout routines. Get the same insights professional athletes use, directly on your dashboard.</p>
+            <ul class="list-unstyled mb-0">
+                <li class="mb-3 d-flex align-items-start gap-3"><i class="bi bi-check-circle-fill text-success fs-5"></i> <span>Dynamic intensity scaling</span></li>
+                <li class="mb-3 d-flex align-items-start gap-3"><i class="bi bi-check-circle-fill text-success fs-5"></i> <span>Form correction tips</span></li>
+                <li class="mb-3 d-flex align-items-start gap-3"><i class="bi bi-check-circle-fill text-success fs-5"></i> <span>Recovery tracking</span></li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="row g-4 align-items-center mb-5 flex-row-reverse stagger-fade">
+        <div class="col-lg-6">
+            <div class="page-banner mb-0" style="height:400px;">
+                <img src="{{ url_for('static', filename='img/sports_medicine.png') }}" alt="Medical Profile">
+            </div>
+        </div>
+        <div class="col-lg-6 px-lg-5">
+            <div class="d-inline-flex align-items-center justify-content-center bg-info text-white mb-3" style="width:56px;height:56px;border-radius:16px;">
+                <i class="bi bi-heart-pulse fs-3"></i>
+            </div>
+            <h3 class="fw-bold mb-3">Digital Health Passport</h3>
+            <p class="text-muted fs-5 mb-4">Maintain a secure, comprehensive health log. Track BMI, sleep, resting heart rate, and injury history. Share it securely with verified sports doctors on the platform.</p>
+            <ul class="list-unstyled mb-0">
+                <li class="mb-3 d-flex align-items-start gap-3"><i class="bi bi-check-circle-fill text-info fs-5"></i> <span>Centralized medical records</span></li>
+                <li class="mb-3 d-flex align-items-start gap-3"><i class="bi bi-check-circle-fill text-info fs-5"></i> <span>Direct doctor consultations</span></li>
+                <li class="mb-3 d-flex align-items-start gap-3"><i class="bi bi-check-circle-fill text-info fs-5"></i> <span>Emergency alert system</span></li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="row g-4 align-items-center stagger-fade">
+        <div class="col-lg-6">
+            <div class="page-banner mb-0" style="height:400px;">
+                <img src="{{ url_for('static', filename='img/tournament_stadium.png') }}" alt="Tournaments">
+            </div>
+        </div>
+        <div class="col-lg-6 px-lg-5">
+            <div class="d-inline-flex align-items-center justify-content-center bg-success text-white mb-3" style="width:56px;height:56px;border-radius:16px;">
+                <i class="bi bi-trophy fs-3"></i>
+            </div>
+            <h3 class="fw-bold mb-3">Verified Tournaments</h3>
+            <p class="text-muted fs-5 mb-4">Discover legitimate, community-verified sports tournaments in your region. Apply directly with your SportEquity ID card and secure your spot.</p>
+            <ul class="list-unstyled mb-0">
+                <li class="mb-3 d-flex align-items-start gap-3"><i class="bi bi-check-circle-fill text-success fs-5"></i> <span>Geo-located events</span></li>
+                <li class="mb-3 d-flex align-items-start gap-3"><i class="bi bi-check-circle-fill text-success fs-5"></i> <span>One-click registration</span></li>
+                <li class="mb-3 d-flex align-items-start gap-3"><i class="bi bi-check-circle-fill text-success fs-5"></i> <span>Anti-fraud verification</span></li>
+            </ul>
+        </div>
+    </div>
+</div>
+
+<!-- ── ROLES SECTION ────────────────────────────────────────────────────── -->
+<div style="background: var(--surface-container-lowest); padding: 5rem 0; border-top: 1px solid rgba(197,197,211,0.3);">
+    <div class="container">
+        <div class="text-center mb-5 stagger-fade">
+            <h2 style="font-family:var(--font-display); font-weight:800; font-size:2.5rem;">Who is SportEquity for?</h2>
+            <p class="text-muted mx-auto" style="max-width:600px;">Our ecosystem connects all stakeholders in the sports journey to create a unified, supportive environment.</p>
+        </div>
+        <div class="row g-4 stagger-fade">
+            {% for role, icon, title, desc in [
+                ('athlete', 'bi-person-arms-up', 'Athletes', 'Get AI coaching, track health, find tournaments, and build your digital athletic profile.'),
+                ('coach', 'bi-person-video3', 'Coaches & Trainers', 'Manage multiple athletes, view training data, and create custom local tournaments.'),
+                ('doctor', 'bi-hospital', 'Sports Doctors', 'Monitor athlete health metrics in real-time, manage appointments, and respond to emergencies.'),
+                ('admin', 'bi-shield-check', 'Community Admins', 'Verify local athletes to ensure platform integrity and track regional sporting analytics.')
+            ] %}
+            <div class="col-md-6 col-lg-3">
+                <div class="card h-100 card-interactive card-ripple border-0 shadow-sm tilt-card" style="border-radius:var(--radius-xl);">
+                    <div class="card-body text-center p-4">
+                        <div class="d-inline-flex align-items-center justify-content-center bg-primary text-white mb-4" style="width:64px;height:64px;border-radius:50%;">
+                            <i class="bi {{ icon }} fs-3"></i>
+                        </div>
+                        <h4 class="fw-bold mb-3">{{ title }}</h4>
+                        <p class="text-muted mb-0" style="font-size:0.95rem;">{{ desc }}</p>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- ── CTA SECTION ──────────────────────────────────────────────────────── -->
+<div style="background: linear-gradient(135deg, var(--primary) 0%, rgba(13,27,74,0.95) 100%); color: white; padding: 6rem 0; position:relative; overflow:hidden;">
+    <div style="position:absolute; inset:0; background:radial-gradient(circle at top right, rgba(74,225,118,0.15) 0%, transparent 60%);"></div>
+    <div class="container text-center position-relative z-index-1">
+        <h2 class="display-4 fw-bold mb-4" style="font-family:var(--font-display);">Ready to level up?</h2>
+        <p class="lead mb-5 mx-auto" style="max-width: 600px; color:rgba(255,255,255,0.8);">Join thousands of athletes and professionals who are already transforming their sports journey with SportEquity.</p>
+        <a href="{{ url_for('register') }}" class="btn btn-lg px-5 py-3" style="background:var(--accent); color:var(--cta-text); font-weight: 800; border-radius: var(--radius-full); box-shadow: 0 8px 32px rgba(74,225,118,0.25); transition: transform 0.3s ease;">
+            Create Your Free Account
+        </a>
+    </div>
+</div>
+{% endblock %}
