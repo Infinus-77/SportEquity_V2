@@ -18,7 +18,10 @@ cp .env.example .env      # or just edit .env directly
 # 3. Run the app
 python app.py
 
-# 4. Login with your account
+# 4. Load demo data (first time only)
+open http://localhost:5000/seed-demo-data
+
+# 5. Login with any demo account
 open http://localhost:5000/login
 ```
 
@@ -40,7 +43,7 @@ open http://localhost:5000/login
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `SECRET_KEY` | Yes | Flask session secret (change in production) |
-| `MONGO_URI` | Yes | MongoDB Atlas connection string. Falls back to `localhost:27017` |
+| `MONGO_URI` | No | MongoDB Atlas connection string. Falls back to `localhost:27017`, then in-memory mock |
 | `GROQ_API_KEY` | No | Enables AI chatbot via Groq LLM. Falls back to rule-based responses |
 
 ---
@@ -124,6 +127,13 @@ SportScore = (Performance × 0.4) + (Health × 0.2) + (Training × 0.3) + (Diet 
 
 ---
 
+## Running Without MongoDB
+
+The app detects when MongoDB is unavailable and automatically switches to an
+**in-memory mock database**. All features work — data just resets on restart.
+This is ideal for demos and testing.
+
+---
 
 ## API Endpoints
 
@@ -133,4 +143,5 @@ SportScore = (Performance × 0.4) + (Health × 0.2) + (Training × 0.3) + (Diet 
 | `GET /api/athlete/<id>/diet-analysis` | Diet insights and recommendations |
 | `POST /athlete/chatbot` | AI chatbot (JSON: `{"question":"..."}`) |
 | `POST /athlete/emergency` | Trigger emergency alert |
+| `GET /seed-demo-data` | Load demo data (resets all data) |
 

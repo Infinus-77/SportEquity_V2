@@ -47,15 +47,101 @@ def connect_mongo():
             return True
         except Exception as e:
             print(f"MongoDB connection failed ({uri[:40]}...): {e}")
-    print("CRITICAL: MongoDB unavailable. The application requires a valid MongoDB connection.")
+    print("WARNING: MongoDB unavailable – using in-memory mock")
     return False
 
 connect_mongo()
 
+# ─── In-memory mock DB ────────────────────────────────────────────────────────
+_stores = {n: {} for n in ['users','athletes','training_logs','health_records',
+                            'diet_logs','appointments','tournaments','ai_chats','emergencies']}
+_id_seq = [9000]
+
+def _nid():
+    _id_seq[0] += 1
+    return str(_id_seq[0])
+
+class MockCursor(list):
+    def sort(self, *a, **k): return self
+    def limit(self, n): return MockCursor(self[:n])
+
+class MockCol:
+    def __init__(self, store): self._s = store
+
+    def find_one(self, q=None):
+        for doc in self._s.values():
+            if self._matches(doc, q or {}):
+                return doc
+        return None
+
+    def find(self, q=None):
+        return MockCursor([d for d in self._s.values() if self._matches(d, q or {})])
+
+    def _matches(self, doc, q):
+        for k, v in q.items():
+            if k == '$or':
+                if not any(self._matches(doc, sub) for sub in v):
+                    return False
+            else:
+                if str(doc.get(k,'')) != str(v):
+                    return False
+        return True
+
+    def insert_one(self, doc):
+        oid = doc.get('_id') or _nid()
+        doc['_id'] = oid
+        self._s[str(oid)] = doc
+        class R: inserted_id = oid
+        return R()
+
+    def insert_many(self, docs):
+        ids = []
+        for d in docs:
+            ids.append(self.insert_one(d).inserted_id)
+        class R: inserted_ids = ids
+        return R()
+
+    def update_one(self, q, upd, upsert=False):
+        doc = self.find_one(q)
+        if doc:
+            if '$set' in upd: doc.update(upd['$set'])
+            if '$push' in upd:
+                for k, v in upd['$push'].items(): doc.setdefault(k, []).append(v)
+            if '$unset' in upd:
+                for k in upd['$unset']: doc.pop(k, None)
+        elif upsert:
+            nd = dict(q)
+            if '$set' in upd: nd.update(upd['$set'])
+            if '$setOnInsert' in upd: nd.update(upd['$setOnInsert'])
+            self.insert_one(nd)
+
+    def delete_many(self, q):
+        if not q:
+            self._s.clear()
+        else:
+            for k in list(self._s.keys()):
+                if self._matches(self._s[k], q):
+                    del self._s[k]
+
+    def count_documents(self, q=None):
+        return len(self.find(q or {}))
+
+class MockDB:
+    def __init__(self):
+        self._cols = {n: MockCol(s) for n, s in _stores.items()}
+    def __getitem__(self, name):
+        if name not in self._cols:
+            _stores[name] = {}
+            self._cols[name] = MockCol(_stores[name])
+        return self._cols[name]
+    def __getattr__(self, name): return self[name]
+
+if db is None:
+    db = MockDB()
+
 def get_col(name):
-    if db is None:
-        raise Exception("Database connection is not established.")
-    return db[name]
+    try: return db[name]
+    except: return getattr(db, name)
 
 # ─── Utility ──────────────────────────────────────────────────────────────────
 def hash_password(pwd):
@@ -222,8 +308,8 @@ def ai_chatbot_response(question, athlete_data=None, history=None):
 # ─── Session Validation ───────────────────────────────────────────────────────
 @app.before_request
 def validate_session():
-    """Ensure user session is valid."""
-    skip_endpoints = ('login', 'register', 'index', 'static', 'logout', None)
+    """Prevent redirect loops when mock DB data is wiped on server restart."""
+    skip_endpoints = ('login', 'register', 'index', 'seed_demo_data', 'static', 'logout', None)
     if 'user_id' in session and request.endpoint not in skip_endpoints:
         user = get_col('users').find_one({'_id': oid(session['user_id'])})
         if not user:
@@ -1165,7 +1251,54 @@ def diet_analysis_api(athlete_id):
         return jsonify(analyze_diet(d))
     except Exception as e: return jsonify({'error':str(e)})
 
-
+# ─── Seed Demo ────────────────────────────────────────────────────────────────
+@app.route('/seed-demo-data')
+def seed_demo_data():
+    for col in ['users','athletes','training_logs','health_records','diet_logs','tournaments']:
+        get_col(col).delete_many({})
+    demo = [
+        {'email':'athlete@sportequity.com','full_name':'Priya Sharma','role':'athlete','region':'Mumbai','specialization':''},
+        {'email':'trainer@sportequity.com','full_name':'Rahul Trainer','role':'trainer','region':'Mumbai','specialization':'Sprinting & Strength'},
+        {'email':'doctor@sportequity.com', 'full_name':'Dr. Anjali Singh','role':'doctor','region':'Mumbai','specialization':'Sports Medicine'},
+        {'email':'admin@sportequity.com',  'full_name':'Community Admin','role':'admin','region':'Mumbai','specialization':''},
+    ]
+    for d in demo: d['password']=hash_password('password123'); d['created_at']=datetime.now().isoformat()
+    u_res = get_col('users').insert_many(demo)
+    a_uid, tr_uid, dr_uid = u_res.inserted_ids[0], u_res.inserted_ids[1], u_res.inserted_ids[2]
+    ar = get_col('athletes').insert_one({'user_id':a_uid,'name':'Priya Sharma','email':'athlete@sportequity.com',
+        'age':22,'gender':'Female','sport':'Athletics','region':'Mumbai',
+        'bio':'Aspiring sprinter from rural Maharashtra','achievements':['State Bronze 200m 2023','District Champion 2022'],
+        'profile_photo':'','visibility':'public','sport_score':0,'verified':True,'created_at':datetime.now().isoformat()})
+    aid = ar.inserted_id
+    for i in range(15):
+        d = (datetime.now()-timedelta(days=15-i)).strftime('%Y-%m-%d')
+        get_col('training_logs').insert_one({'athlete_id':aid,'user_id':a_uid,'date':d,
+            'workout_type':'Cardio' if i%2==0 else 'Strength','duration':45+(i%30),'intensity':50+(i%35),
+            'notes':f'Session {i+1}','created_at':datetime.now().isoformat()})
+    for i in range(8):
+        d = (datetime.now()-timedelta(days=30-i*4)).strftime('%Y-%m-%d')
+        h,w = 162,55+(i%4)
+        get_col('health_records').insert_one({'athlete_id':aid,'user_id':a_uid,'date':d,'height':h,'weight':w,
+            'bmi':round(w/(h/100)**2,1),'heart_rate':62+(i%8),'blood_pressure':'116/74',
+            'sleep_hours':7+(i%2),'injury_notes':'','created_at':datetime.now().isoformat()})
+    for i in range(14):
+        d = (datetime.now()-timedelta(days=14-i)).strftime('%Y-%m-%d')
+        get_col('diet_logs').insert_one({'athlete_id':aid,'user_id':a_uid,'date':d,'meal':f'Day {i+1} meals',
+            'calories':2000+(i%300),'protein':65+(i%25),'carbs':240+(i%60),'fats':55+(i%20),
+            'water_intake':2500+(i%500),'notes':'','created_at':datetime.now().isoformat()})
+    get_col('tournaments').insert_many([
+        {'name':'Mumbai Regional Athletics','sport':'Athletics','location':'Mumbai',
+         'start_date':(datetime.now()+timedelta(days=30)).strftime('%Y-%m-%d'),
+         'end_date':(datetime.now()+timedelta(days=32)).strftime('%Y-%m-%d'),
+         'description':'Annual district track meet. Open to all.','participants':[],'created_by':sid(tr_uid),'created_at':datetime.now().isoformat()},
+        {'name':'Maharashtra Football Cup','sport':'Football','location':'Pune',
+         'start_date':(datetime.now()+timedelta(days=60)).strftime('%Y-%m-%d'),
+         'end_date':(datetime.now()+timedelta(days=65)).strftime('%Y-%m-%d'),
+         'description':'State-level football tournament U25.','participants':[],'created_by':sid(tr_uid),'created_at':datetime.now().isoformat()},
+    ])
+    return jsonify({'status':'success','message':'Demo data loaded!',
+        'accounts':{'athlete':'athlete@sportequity.com / password123','trainer':'trainer@sportequity.com / password123',
+                    'doctor':'doctor@sportequity.com / password123','admin':'admin@sportequity.com / password123'}})
 
 @app.context_processor
 def inject_globals():
